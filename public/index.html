@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Firebase Hello World</title>
+
+    <!-- Firebase SDK -->
+    <script defer src="/__/firebase/11.1.0/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/11.1.0/firebase-functions-compat.js"></script>
+    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .container {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      button {
+        background: #039be5;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #result {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Firebase Functions Demo</h1>
+      
+      <div class="form-group">
+        <h2>Simple Hello World</h2>
+        <button onclick="callHelloWorld()">Call Hello World</button>
+      </div>
+
+      <div class="form-group">
+        <h2>Personalized Greeting</h2>
+        <input type="text" id="nameInput" placeholder="Enter your name">
+        <button onclick="greetPerson()">Greet</button>
+      </div>
+
+      <div class="form-group">
+        <h2>D&D Dice Roller</h2>
+        <div></div>
+          <div>
+            <label for="diceInput">Roll for check/save/initiative</label>
+          </div>
+          <div></div>
+            <input type="radio" id="advantage" name="diceType" value="advantagecheck">
+            <label for="advantage">Advantage</label>
+            <input type="radio" id="disadvantage" name="diceType" value="disadvantagecheck">
+            <label for="disadvantage">Disadvantage</label>
+            <input type="radio" id="normal" name="diceType" value="normalcheck" checked>
+            <label for="normal">Normal</label>
+          </div>
+          <button onclick="rollDice20()">Roll</button>
+        </div>
+        <div>
+          <div>
+            <label for="diceInput">Roll for damage</label>
+          </div>
+          <input type="text" id="diceInput" placeholder="e.g., 3d6 or 1d20">
+          <button onclick="rollDice()">Roll</button>
+        </div>
+      </div>
+
+      <div id="result"></div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const resultDiv = document.getElementById('result');
+
+        window.callHelloWorld = async function() {
+          try {
+            console.log('Calling helloWorld function...');
+            const response = await fetch('/helloWorld');
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const text = await response.text();
+            console.log('Response text:', text);
+            resultDiv.textContent = text;
+          } catch (error) {
+            console.error('Error:', error);
+            resultDiv.textContent = 'Error: ' + error.message;
+          }
+        };
+
+        window.greetPerson = async function() {
+          const name = document.getElementById('nameInput').value;
+          if (!name) {
+            resultDiv.textContent = 'Please enter a name';
+            return;
+          }
+
+          try {
+            console.log(`Calling greet function with name: ${name}`);
+            const response = await fetch(`/greet/${name}`);
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const text = await response.text();
+            console.log('Response text:', text);
+            resultDiv.textContent = text;
+          } catch (error) {
+            console.error('Error:', error);
+            resultDiv.textContent = 'Error: ' + error.message;
+          }
+        };
+
+        window.rollDice = async function() {
+          const dicePattern = document.getElementById('diceInput').value;
+          if (!dicePattern) {
+            resultDiv.textContent = 'Please enter dice pattern (e.g., 3d6)';
+            return;
+          }
+
+          try {
+            console.log(`Rolling dice: ${dicePattern}`);
+            const response = await fetch(`/roll/${dicePattern}`);
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            console.log('Roll result:', result);
+            resultDiv.textContent = `Rolled ${result.dice}: [${result.rolls.join(', ')}] = ${result.sum}`;
+          } catch (error) {
+            console.error('Error:', error);
+            resultDiv.textContent = 'Error: ' + error.message;
+          }
+        };
+
+        window.rollDice20 = async function() {
+          const diceType = document.querySelector('input[name="diceType"]:checked').value;
+          
+          try {
+            console.log(`Rolling d20 with ${diceType}`);
+            const response = await fetch(`/roll/${diceType}`);
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            console.log('Roll result:', result);
+            
+            let resultText = '';
+            if (diceType === 'advantagecheck' || diceType === 'disadvantagecheck') {
+              resultText = `Rolled with ${diceType === 'advantagecheck' ? 'advantage' : 'disadvantage'}: [${result.rolls.join(', ')}] = ${result.sum}`;
+            } else {
+              resultText = `Rolled d20: ${result.sum}`;
+            }
+            
+            resultDiv.textContent = resultText;
+          } catch (error) {
+            console.error('Error:', error);
+            resultDiv.textContent = 'Error: ' + error.message;
+          }
+        };
+      });
+    </script>
+  </body>
+</html>
