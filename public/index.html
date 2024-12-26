@@ -121,7 +121,7 @@
             }
             const text = await response.text();
             console.log('Response text:', text);
-            resultDiv.textContent = text;
+            resultDiv.textContent = decodeURIComponent(text);
           } catch (error) {
             console.error('Error:', error);
             resultDiv.textContent = 'Error: ' + error.message;
