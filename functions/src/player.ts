@@ -93,14 +93,26 @@ export const getAudioUrl = onRequest(
         return;
       }
 
-      // Use Firebase Storage URL format
+      // Get file metadata to use for cache validation
+      const [metadata] = await file.getMetadata();
+      const etagValue = metadata.etag;
+
+      // Use Firebase Storage URL format with cache busting based on etag
       const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(
         filePath
-      )}?alt=media`;
+      )}?alt=media&cache=${etagValue}`;
 
+      // Set cache control headers
       response.set("Access-Control-Allow-Origin", "*");
       response.set("Access-Control-Allow-Methods", "GET");
-      response.json({url: publicUrl});
+      response.set("Cache-Control", "public, max-age=300"); // Cache for 5 minutes
+      response.set("ETag", etagValue);
+
+      response.json({
+        url: publicUrl,
+        cacheControl: "public, max-age=300",
+        etag: etagValue,
+      });
     } catch (error) {
       logger.error("Error generating URL:", error);
       response.status(500).json({error: "Internal server error"});
