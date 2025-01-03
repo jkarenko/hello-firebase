@@ -39,12 +39,32 @@
         let offset = 0;
         let isPlaying = false;
         let currentSong = null;
+        const audioBufferCache = new Map(); // Cache for audio buffers
 
         const versionSelect = document.getElementById('versionSelect');
         const playPauseBtn = document.getElementById('playPauseBtn');
         const timeDisplay = document.getElementById('timeDisplay');
         const progressBar = document.getElementById('progressBar');
         const progressContainer = document.getElementById('progressContainer');
+
+        // Pre-cache all versions
+        async function preCacheVersions(versions) {
+          const loadingPromises = versions.map(async version => {
+            try {
+              if (!audioBufferCache.has(version.filename)) {
+                const buffer = await loadAudio(version.filename);
+                audioBufferCache.set(version.filename, buffer);
+                console.log(`Pre-cached ${version.displayName}`);
+              }
+            } catch (error) {
+              console.error(`Error pre-caching ${version.displayName}:`, error);
+            }
+          });
+
+          // Load all versions in parallel
+          await Promise.all(loadingPromises);
+          console.log('All versions pre-cached');
+        }
 
         // Fetch available versions from Cloud Function
         async function loadVersions() {
@@ -66,6 +86,9 @@
               versionSelect.appendChild(option);
             });
 
+            // Start pre-caching all versions
+            preCacheVersions(currentSong.versions);
+
             // Load the first version
             await switchVersion(false);
           } catch (error) {
@@ -75,12 +98,21 @@
         }
 
         async function loadAudio(filename) {
+          // Check cache first
+          if (audioBufferCache.has(filename)) {
+            return audioBufferCache.get(filename);
+          }
+
           const response = await fetch(`/getAudioUrl?filename=${encodeURIComponent(filename)}`);
           const { url } = await response.json();
           
           const audioResponse = await fetch(url);
           const arrayBuffer = await audioResponse.arrayBuffer();
-          return await audioContext.decodeAudioData(arrayBuffer);
+          const buffer = await audioContext.decodeAudioData(arrayBuffer);
+          
+          // Store in cache
+          audioBufferCache.set(filename, buffer);
+          return buffer;
         }
 
         async function switchVersion(keepPlaying = true) {
@@ -92,9 +124,9 @@
           }
 
           const selectedVersion = versionSelect.value;
-          const audioUrl = `/audio/vesipaakaupunki/${selectedVersion}`;
           
           try {
+            // Use cached version if available
             audioBuffer = await loadAudio(selectedVersion);
             if (wasPlaying && keepPlaying) {
               playAudio(currentTime);
