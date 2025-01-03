@@ -33,3 +33,7 @@ yarn-debug.log*
 
 # Player
 public/audio/**
+
+# Service account
+service-account-key.json
+**/service-account-key.json

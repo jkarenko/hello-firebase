@@ -1,0 +1,23 @@
+[
+    {
+        "origin": [
+            "https://jkarenko-hello-firebase.web.app",
+            "http://localhost:5000",
+            "http://127.0.0.1:5002"
+        ],
+        "method": [
+            "GET",
+            "HEAD",
+            "OPTIONS"
+        ],
+        "maxAgeSeconds": 3600,
+        "responseHeader": [
+            "Content-Type",
+            "Access-Control-Allow-Origin",
+            "Content-Length",
+            "Content-Range",
+            "Range",
+            "Cache-Control"
+        ]
+    }
+]

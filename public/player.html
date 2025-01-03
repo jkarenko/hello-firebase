@@ -74,9 +74,12 @@
           }
         }
 
-        async function loadAudio(url) {
-          const response = await fetch(url);
-          const arrayBuffer = await response.arrayBuffer();
+        async function loadAudio(filename) {
+          const response = await fetch(`/getAudioUrl?filename=${encodeURIComponent(filename)}`);
+          const { url } = await response.json();
+          
+          const audioResponse = await fetch(url);
+          const arrayBuffer = await audioResponse.arrayBuffer();
           return await audioContext.decodeAudioData(arrayBuffer);
         }
 
@@ -92,7 +95,7 @@
           const audioUrl = `/audio/vesipaakaupunki/${selectedVersion}`;
           
           try {
-            audioBuffer = await loadAudio(audioUrl);
+            audioBuffer = await loadAudio(selectedVersion);
             if (wasPlaying && keepPlaying) {
               playAudio(currentTime);
             } else {

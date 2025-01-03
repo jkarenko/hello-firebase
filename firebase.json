@@ -39,6 +39,10 @@
         "function": "getSongVersions"
       },
       {
+        "source": "/getAudioUrl",
+        "function": "getAudioUrl"
+      },
+      {
         "source": "/player",
         "destination": "/player.html"
       },

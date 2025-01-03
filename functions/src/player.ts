@@ -1,5 +1,13 @@
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import {getStorage} from "firebase-admin/storage";
+import {initializeApp} from "firebase-admin/app";
+
+// Initialize Firebase Admin if not already done
+initializeApp();
+
+const storage = getStorage();
+const bucket = storage.bucket("jkarenko-hello-firebase.firebasestorage.app");
 
 interface SongVersion {
   id: string;
@@ -18,42 +26,83 @@ export const getSongVersions = onRequest(
     cors: true,
     region: "us-central1",
   },
-  (request, response) => {
+  async (request, response) => {
     try {
-      // In production, this would ideally come from Firebase Storage or Firestore
-      // For now, we'll hardcode the versions we saw in player.html
-      const vesipaakaupunkiVersions: SongVersion[] = [
-        {id: "engl", displayName: "Engl", filename: "Compassionfruitcake_Engl.mp3"},
-        {id: "elmwood", displayName: "Elmwood", filename: "Compassionfruitcake_Elmwood.mp3"},
-        {id: "6505plus", displayName: "6505+", filename: "Compassionfruitcake_6505p.mp3"},
-        {id: "valveking", displayName: "Valve King", filename: "Compassionfruitcake_ValveKing.mp3"},
-        {id: "englcrunch", displayName: "Engl Crunch", filename: "Compassionfruitcake_Engl_Crunch.mp3"},
-        {id: "rectifier", displayName: "Rectifier", filename: "Compassionfruitcake_MRecto.mp3"},
-        {id: "tonexrecto", displayName: "Tonex Recto", filename: "Compassionfruitcake_TRecto.mp3"},
-        {id: "tonexherbert", displayName: "Tonex Herbert", filename: "Compassionfruitcake_THerbert.mp3"},
-        {id: "helixpanama_new", displayName: "Helix Panama (New)", filename: "Compassionfruitcake_HPanama_New.mp3"},
-        {id: "helixpanama", displayName: "Helix Panama", filename: "Compassionfruitcake_HPanama.mp3"},
-        {id: "helixrectifier", displayName: "Helix Rectifier", filename: "Compassionfruitcake_HRectifier.mp3"},
-        {id: "helixmk4", displayName: "Helix Mesa MK4", filename: "Compassionfruitcake_HMK4.mp3"},
-      ];
+      // List all files in the songs directory
+      const [files] = await bucket.getFiles({
+        prefix: "audio/vesipaakaupunki/",
+      });
 
-      const songs: Song[] = [
-        {
-          id: "vesipaakaupunki",
-          name: "Vesipääkaupunki",
-          versions: vesipaakaupunkiVersions,
-        },
-      ];
+      // Group files by song
+      const songs: Song[] = [];
+      const versions: SongVersion[] = [];
 
-      logger.info("Fetching song versions", {
-        songCount: songs.length,
-        versionCount: vesipaakaupunkiVersions.length,
-        structuredData: true,
+      for (const file of files) {
+        // Skip the directory itself
+        if (file.name.endsWith("/")) continue;
+
+        // Get the filename without the path
+        const filename = file.name.split("/").pop() || "";
+
+        // Get metadata from the file
+        const [metadata] = await file.getMetadata();
+
+        versions.push({
+          id: metadata.metadata?.id || filename,
+          displayName:
+            metadata.metadata?.displayName || filename.replace("Compassionfruitcake_", "").replace(".mp3", ""),
+          filename: filename,
+        });
+      }
+
+      songs.push({
+        id: "vesipaakaupunki",
+        name: "Vesipääkaupunki",
+        versions: versions.sort((a, b) => a.displayName.localeCompare(b.displayName)),
       });
 
       response.json({songs});
     } catch (error) {
       logger.error("Error fetching song versions:", error);
+      response.status(500).json({error: "Internal server error"});
+    }
+  }
+);
+
+export const getAudioUrl = onRequest(
+  {
+    cors: ["*"],
+    region: "us-central1",
+  },
+  async (request, response) => {
+    try {
+      const filename = request.query.filename as string;
+      if (!filename) {
+        response.status(400).json({error: "Filename is required"});
+        return;
+      }
+
+      // Construct the full path
+      const filePath = `audio/vesipaakaupunki/${filename}`;
+      const file = bucket.file(filePath);
+      const [exists] = await file.exists();
+
+      if (!exists) {
+        logger.error(`File not found: ${filePath}`);
+        response.status(404).json({error: "File not found"});
+        return;
+      }
+
+      // Use Firebase Storage URL format
+      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(
+        filePath
+      )}?alt=media`;
+
+      response.set("Access-Control-Allow-Origin", "*");
+      response.set("Access-Control-Allow-Methods", "GET");
+      response.json({url: publicUrl});
+    } catch (error) {
+      logger.error("Error generating URL:", error);
       response.status(500).json({error: "Internal server error"});
     }
   }
