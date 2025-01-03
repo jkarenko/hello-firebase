@@ -35,6 +35,14 @@
         "function": "rollDice"
       },
       {
+        "source": "/getSongVersions",
+        "function": "getSongVersions"
+      },
+      {
+        "source": "/player",
+        "destination": "/player.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
