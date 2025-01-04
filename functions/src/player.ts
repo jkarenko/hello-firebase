@@ -1,15 +1,8 @@
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {getStorage} from "firebase-admin/storage";
-import {initializeApp, cert} from "firebase-admin/app";
 import {verifyToken} from "./auth";
-
-// Initialize Firebase Admin with service account key
-const serviceAccount = require("../service-account-key.json");
-initializeApp({
-  credential: cert(serviceAccount),
-  storageBucket: "jkarenko-hello-firebase.firebasestorage.app",
-});
+import {getUserProjects, hasProjectAccess, getProjectAccess} from "./projects";
 
 const storage = getStorage();
 const bucket = storage.bucket();
@@ -52,6 +45,10 @@ export const getSongVersions = onRequest(
       const decodedToken = await verifyAuth(request);
       logger.info("User authenticated", {uid: decodedToken.uid});
 
+      // Get list of projects the user has access to
+      const accessibleProjects = await getUserProjects(decodedToken.uid);
+      logger.debug("User's accessible projects", {projects: accessibleProjects});
+
       // List all files in the songs directory
       logger.debug("Fetching files from storage", {
         prefix: "audio/",
@@ -63,6 +60,7 @@ export const getSongVersions = onRequest(
       // Group files by project and song
       const songs: Song[] = [];
       const projectVersions = new Map<string, SongVersion[]>();
+      const projectNames = new Map<string, string>();
 
       logger.debug(`Found ${files.length} files in storage`);
 
@@ -79,23 +77,39 @@ export const getSongVersions = onRequest(
           continue;
         }
 
-        const projectName = parts[1];
+        const projectId = parts[1];
         const filename = parts[2];
+
+        // Skip if user doesn't have access to this project
+        if (!accessibleProjects.includes(projectId)) {
+          continue;
+        }
+
+        // Get project name from Firestore if we haven't already
+        if (!projectNames.has(projectId)) {
+          const projectAccess = await getProjectAccess(projectId);
+          if (projectAccess) {
+            projectNames.set(projectId, projectAccess.projectName);
+          } else {
+            // Fallback to capitalized ID if project access not found
+            projectNames.set(projectId, projectId.charAt(0).toUpperCase() + projectId.slice(1));
+          }
+        }
 
         // Get metadata from the file
         const [metadata] = await file.getMetadata();
         logger.debug("Processing file", {
-          projectName,
+          projectId,
           filename,
           metadata: metadata.metadata,
         });
 
         // Initialize versions array for this project if needed
-        if (!projectVersions.has(projectName)) {
-          projectVersions.set(projectName, []);
+        if (!projectVersions.has(projectId)) {
+          projectVersions.set(projectId, []);
         }
 
-        projectVersions.get(projectName)!.push({
+        projectVersions.get(projectId)!.push({
           id: metadata.metadata?.id || filename,
           displayName: metadata.metadata?.displayName || filename.replace(/^[^_]*_/, "").replace(".mp3", ""),
           filename: filename,
@@ -103,10 +117,10 @@ export const getSongVersions = onRequest(
       }
 
       // Convert projects map to songs array
-      for (const [projectName, versions] of projectVersions) {
+      for (const [projectId, versions] of projectVersions) {
         songs.push({
-          id: projectName,
-          name: projectName.charAt(0).toUpperCase() + projectName.slice(1), // Capitalize first letter
+          id: projectId,
+          name: projectNames.get(projectId)!, // Use the project name from Firestore
           versions: versions.sort((a, b) => a.displayName.localeCompare(b.displayName)),
         });
       }
@@ -155,6 +169,17 @@ export const getAudioUrl = onRequest(
       if (!filename || !projectId) {
         logger.warn("Missing required parameters");
         response.status(400).json({error: "Filename and projectId are required"});
+        return;
+      }
+
+      // Check if user has access to this project
+      const hasAccess = await hasProjectAccess(decodedToken.uid, projectId);
+      if (!hasAccess) {
+        logger.warn("Unauthorized project access attempt", {
+          uid: decodedToken.uid,
+          projectId,
+        });
+        response.status(403).json({error: "You don't have access to this project"});
         return;
       }
 
