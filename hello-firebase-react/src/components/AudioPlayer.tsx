@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner } from "@nextui-org/react";
+import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
 import { AudioCache } from '../utils/AudioCache';
 
 interface Version {
@@ -443,67 +444,83 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     <Card className="w-full max-w-4xl mx-auto">
       <CardBody className="p-8">
         <div className="flex flex-col gap-8">
-          <div className="text-left">
-            <Button
-              variant="light"
-              color="primary"
-              onPress={onBack}
-              className="px-0 -ml-2"
-            >
-              ← Back to Projects
-            </Button>
-          </div>
+          {/* Back button */}
+          <Button
+            variant="light"
+            color="primary"
+            onPress={onBack}
+            className="w-fit"
+            startContent={<span>‹</span>}
+          >
+            Back to projects
+          </Button>
 
-          <h1 className="text-2xl font-semibold text-center text-foreground">
+          {/* Project title */}
+          <h1 className="text-4xl font-normal text-left text-foreground">
             {project.name}
           </h1>
 
-          {project.versions.length > 0 && (
-            <Select
-              label="Select Version"
-              placeholder="Choose a version"
-              selectedKeys={[selectedVersion]}
-              className="max-w-md mx-auto"
-              onChange={(e) => setSelectedVersion(e.target.value)}
-              variant="bordered"
-              size="lg"
-            >
-              {project.versions.map((version) => (
-                <SelectItem key={version.filename} value={version.filename}>
-                  {version.displayName}
-                </SelectItem>
-              ))}
-            </Select>
-          )}
-
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-center gap-4">
+          {/* Main player section */}
+          <div className="flex flex-col gap-12">
+            {/* Play button and progress section */}
+            <div className="flex items-center gap-6">
               <Button
                 color="primary"
                 onPress={togglePlayPause}
                 isDisabled={!selectedVersion}
                 size="lg"
+                isIconOnly
+                radius="full"
+                className="w-16 h-16 min-w-[64px] p-0"
               >
-                {isPlaying ? 'Pause' : 'Play'}
+                {isPlaying ? 
+                  <PauseCircleIcon className="w-16 h-16 text-white" /> : 
+                  <PlayCircleIcon className="w-16 h-16 text-white" />
+                }
               </Button>
-              <span className="text-sm text-foreground-500">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </span>
+
+              <div className="flex-1 flex flex-col gap-2">
+                {/* Time display */}
+                <div className="flex justify-between text-base">
+                  <span className="text-foreground-500">{formatTime(currentTime)}</span>
+                  <span className="text-foreground-500">{formatTime(duration)}</span>
+                </div>
+
+                {/* Progress Bar */}
+                <div 
+                  className="w-full h-2 bg-default-200 dark:bg-default-100 rounded-full cursor-pointer overflow-hidden"
+                  onClick={handleProgressClick}
+                >
+                  <div 
+                    className="h-full bg-primary transition-[width] duration-100"
+                    style={{ 
+                      width: `${(currentTime / duration) * 100 || 0}%`,
+                      transition: isPlaying ? 'none' : 'width 0.1s linear'
+                    }}
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Progress Bar with click handling */}
-            <div 
-              className="w-full max-w-md mx-auto h-2 bg-default-200 dark:bg-default-100 rounded-medium cursor-pointer overflow-hidden"
-              onClick={handleProgressClick}
-            >
-              <div 
-                className="h-full bg-primary transition-[width] duration-100"
-                style={{ 
-                  width: `${(currentTime / duration) * 100 || 0}%`,
-                  transition: isPlaying ? 'none' : 'width 0.1s linear'
-                }}
-              />
-            </div>
+            {/* Version selector */}
+            {project.versions.length > 0 && (
+              <Select
+                label="Version"
+                placeholder="Choose a version"
+                selectedKeys={[selectedVersion]}
+                className="max-w-full"
+                onChange={(e) => setSelectedVersion(e.target.value)}
+                variant="bordered"
+                size="lg"
+                radius="lg"
+              >
+                {project.versions.map((version) => (
+                  <SelectItem key={version.filename} value={version.filename}>
+                    {version.displayName}
+                  </SelectItem>
+                ))}
+              </Select>
+            )}
           </div>
 
           {error && (
