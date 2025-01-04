@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner } from "@nextui-org/react";
 import { AudioCache } from '../utils/AudioCache';
 
 interface Version {
@@ -360,75 +361,169 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
 
   if (loading) {
     return (
-      <div className="player-section">
-        <div className="back-button">
-          <button onClick={onBack}>← Back to Projects</button>
-        </div>
-        <h1>Loading Audio Player...</h1>
-      </div>
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardBody className="p-8">
+          <div className="flex flex-col gap-8">
+            <div className="text-left">
+              <Button
+                variant="light"
+                color="primary"
+                onPress={onBack}
+                className="px-0 -ml-2"
+              >
+                ← Back to Projects
+              </Button>
+            </div>
+            <div className="flex justify-center items-center">
+              <Spinner label="Loading Audio Player..." color="primary" />
+            </div>
+          </div>
+        </CardBody>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="player-section">
-        <div className="back-button">
-          <button onClick={onBack}>← Back to Projects</button>
-        </div>
-        <div className="error">{error}</div>
-      </div>
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardBody className="p-8">
+          <div className="flex flex-col gap-8">
+            <div className="text-left">
+              <Button
+                variant="light"
+                color="primary"
+                onPress={onBack}
+                className="px-0 -ml-2"
+              >
+                ← Back to Projects
+              </Button>
+            </div>
+            <Chip
+              color="danger"
+              variant="flat"
+              className="w-full"
+            >
+              {error}
+            </Chip>
+          </div>
+        </CardBody>
+      </Card>
     );
   }
 
   if (!project) {
     return (
-      <div className="player-section">
-        <div className="back-button">
-          <button onClick={onBack}>← Back to Projects</button>
-        </div>
-        <div className="error">Project not found</div>
-      </div>
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardBody className="p-8">
+          <div className="flex flex-col gap-8">
+            <div className="text-left">
+              <Button
+                variant="light"
+                color="primary"
+                onPress={onBack}
+                className="px-0 -ml-2"
+              >
+                ← Back to Projects
+              </Button>
+            </div>
+            <Chip
+              color="danger"
+              variant="flat"
+              className="w-full"
+            >
+              Project not found
+            </Chip>
+          </div>
+        </CardBody>
+      </Card>
     );
   }
 
   return (
-    <div className="player-section">
-      <div className="back-button">
-        <button onClick={onBack}>← Back to Projects</button>
-      </div>
-      <h1>{project?.name || 'Loading...'}</h1>
-      
-      <select 
-        className="version-selector" 
-        value={selectedVersion}
-        onChange={(e) => setSelectedVersion(e.target.value)}
-      >
-        {project?.versions.map(version => (
-          <option key={version.filename} value={version.filename}>
-            {version.displayName}
-          </option>
-        ))}
-      </select>
-      
-      <div className="controls">
-        <button onClick={togglePlayPause} className="play-pause">
-          {isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <span className="time-display">
-          {formatTime(currentTime)} / {formatTime(duration)}
-        </span>
-      </div>
-      
-      <div className="progress-container" onClick={handleProgressClick}>
-        <div 
-          className="progress-bar" 
-          style={{ 
-            width: `${audioBuffer.current ? (currentTime / audioBuffer.current.duration) * 100 : 0}%`,
-            transition: isPlaying ? 'none' : 'width 0.1s linear'
-          }}
-        />
-      </div>
-    </div>
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardBody className="p-8">
+        <div className="flex flex-col gap-8">
+          <div className="text-left">
+            <Button
+              variant="light"
+              color="primary"
+              onPress={onBack}
+              className="px-0 -ml-2"
+            >
+              ← Back to Projects
+            </Button>
+          </div>
+
+          <h1 className="text-2xl font-semibold text-center text-foreground">
+            {project.name}
+          </h1>
+
+          {project.versions.length > 0 && (
+            <Select
+              label="Select Version"
+              placeholder="Choose a version"
+              selectedKeys={[selectedVersion]}
+              className="max-w-md mx-auto"
+              onChange={(e) => setSelectedVersion(e.target.value)}
+              variant="bordered"
+              size="lg"
+            >
+              {project.versions.map((version) => (
+                <SelectItem key={version.filename} value={version.filename}>
+                  {version.displayName}
+                </SelectItem>
+              ))}
+            </Select>
+          )}
+
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-center gap-4">
+              <Button
+                color="primary"
+                onPress={togglePlayPause}
+                isDisabled={!selectedVersion}
+                size="lg"
+              >
+                {isPlaying ? 'Pause' : 'Play'}
+              </Button>
+              <span className="text-sm text-foreground-500">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </span>
+            </div>
+
+            {/* Progress Bar with click handling */}
+            <div 
+              className="w-full max-w-md mx-auto h-2 bg-default-200 dark:bg-default-100 rounded-medium cursor-pointer overflow-hidden"
+              onClick={handleProgressClick}
+            >
+              <div 
+                className="h-full bg-primary transition-[width] duration-100"
+                style={{ 
+                  width: `${(currentTime / duration) * 100 || 0}%`,
+                  transition: isPlaying ? 'none' : 'width 0.1s linear'
+                }}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <Chip
+              color="danger"
+              variant="flat"
+              className="w-full"
+            >
+              {error}
+            </Chip>
+          )}
+
+          {loading && (
+            <div className="flex justify-center">
+              <Spinner color="primary" />
+            </div>
+          )}
+        </div>
+      </CardBody>
+    </Card>
   );
 };
 
