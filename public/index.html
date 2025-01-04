@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Vesipääkaupunki Player</title>
+    <title>Audio Project Player</title>
 
     <!-- Firebase SDK -->
     <script defer src="/__/firebase/11.1.0/firebase-app-compat.js"></script>
@@ -21,8 +21,18 @@
         <span id="userEmail" class="user-email"></span>
       </div>
 
+      <div class="project-section" id="projectSection" style="display: none;">
+        <h1>Select a Project</h1>
+        <div class="project-list" id="projectList">
+          <!-- Projects will be loaded here -->
+        </div>
+      </div>
+
       <div class="player-section" id="playerSection" style="display: none;">
-        <h1>Vesipääkaupunki Player</h1>
+        <div class="back-button">
+          <button id="backToProjects">← Back to Projects</button>
+        </div>
+        <h1 id="projectTitle">Loading...</h1>
         
         <select class="version-selector" id="versionSelect">
           <option value="">Loading versions...</option>
@@ -181,8 +191,58 @@
         const loginBtn = document.getElementById('loginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
         const userEmail = document.getElementById('userEmail');
+        const projectSection = document.getElementById('projectSection');
         const playerSection = document.getElementById('playerSection');
         
+        // Helper function to get auth token
+        async function getAuthHeader() {
+          const token = await currentUser.getIdToken();
+          return {
+            'Authorization': `Bearer ${token}`
+          };
+        }
+
+        // Fetch available versions from Cloud Function
+        async function loadVersions(projectId) {
+          Logger.info('Loading versions');
+          try {
+            const headers = await getAuthHeader();
+            const response = await fetch('/getSongVersions', { headers });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const result = await response.json();
+            
+            const versionSelect = document.getElementById('versionSelect');
+            const projectTitle = document.getElementById('projectTitle');
+            versionSelect.innerHTML = '';
+            
+            const currentSong = result.songs.find(song => song.id === projectId);
+            if (!currentSong) {
+              throw new Error('Project not found');
+            }
+
+            projectTitle.textContent = currentSong.name;
+            Logger.debug('Loaded song data', { song: currentSong.name, versions: currentSong.versions.length });
+            
+            currentSong.versions.forEach(version => {
+              const option = document.createElement('option');
+              option.value = version.filename;
+              option.textContent = version.displayName;
+              versionSelect.appendChild(option);
+            });
+
+            return currentSong;
+          } catch (error) {
+            Logger.error('Error loading versions', error);
+            const versionSelect = document.getElementById('versionSelect');
+            versionSelect.innerHTML = '<option value="">Error loading versions</option>';
+            if (error.message.includes('401')) {
+              alert('Session expired. Please sign in again.');
+              await auth.signOut();
+            }
+            throw error;
+          }
+        }
+
         // Auth state change listener
         auth.onAuthStateChanged(async (user) => {
           Logger.info('Auth state changed', { user: user?.email });
@@ -193,15 +253,16 @@
             loginBtn.style.display = 'none';
             logoutBtn.style.display = 'inline-block';
             userEmail.textContent = user.email;
-            playerSection.style.display = 'block';
+            projectSection.style.display = 'block';
             
-            // Initialize player
-            await initializePlayer();
+            // Load projects
+            await loadProjects();
           } else {
             // User is signed out
             loginBtn.style.display = 'inline-block';
             logoutBtn.style.display = 'none';
             userEmail.textContent = '';
+            projectSection.style.display = 'none';
             playerSection.style.display = 'none';
           }
         });
@@ -241,7 +302,7 @@
         });
 
         // Player initialization and functionality
-        async function initializePlayer() {
+        async function initializePlayer(projectId) {
           const audioContext = new (window.AudioContext || window.webkitAudioContext)();
           let audioBuffer = null;
           let sourceNode = null;
@@ -256,14 +317,18 @@
           const timeDisplay = document.getElementById('timeDisplay');
           const progressBar = document.getElementById('progressBar');
           const progressContainer = document.getElementById('progressContainer');
+          const backToProjects = document.getElementById('backToProjects');
 
-          // Helper function to get auth token
-          async function getAuthHeader() {
-            const token = await currentUser.getIdToken();
-            return {
-              'Authorization': `Bearer ${token}`
-            };
-          }
+          // Back button handler
+          backToProjects.addEventListener('click', () => {
+            if (isPlaying) {
+              stopAudio();
+            }
+            playerSection.style.display = 'none';
+            projectSection.style.display = 'block';
+            audioBuffer = null;
+            currentSong = null;
+          });
 
           // Pre-cache all versions
           async function preCacheVersions(versions) {
@@ -283,39 +348,6 @@
             Logger.info('Pre-cache complete', { cachedVersions: memoryCache.size });
           }
 
-          // Fetch available versions from Cloud Function
-          async function loadVersions() {
-            Logger.info('Loading versions');
-            try {
-              const headers = await getAuthHeader();
-              const response = await fetch('/getSongVersions', { headers });
-              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-              const result = await response.json();
-              
-              versionSelect.innerHTML = '';
-              
-              currentSong = result.songs[0];
-              Logger.debug('Loaded song data', { song: currentSong.name, versions: currentSong.versions.length });
-              
-              currentSong.versions.forEach(version => {
-                const option = document.createElement('option');
-                option.value = version.filename;
-                option.textContent = version.displayName;
-                versionSelect.appendChild(option);
-              });
-
-              await preCacheVersions(currentSong.versions);
-              await switchVersion(false);
-            } catch (error) {
-              Logger.error('Error loading versions', error);
-              versionSelect.innerHTML = '<option value="">Error loading versions</option>';
-              if (error.message.includes('401')) {
-                alert('Session expired. Please sign in again.');
-                await auth.signOut();
-              }
-            }
-          }
-
           async function loadAudio(filename) {
             Logger.debug('Loading audio', { filename });
             
@@ -329,7 +361,7 @@
             const headers = await getAuthHeader();
 
             // First, get the signed URL
-            const urlResponse = await fetch(`/getAudioUrl?filename=${encodeURIComponent(filename)}`, { headers });
+            const urlResponse = await fetch(`/getAudioUrl?filename=${encodeURIComponent(filename)}&projectId=${encodeURIComponent(currentSong.id)}`, { headers });
             if (!urlResponse.ok) throw new Error(`HTTP error! status: ${urlResponse.status}`);
             const { url, etag: serverETag } = await urlResponse.json();
 
@@ -516,8 +548,51 @@
           });
 
           // Load versions and initialize player
-          await loadVersions();
-          Logger.info('Player initialized');
+          try {
+            currentSong = await loadVersions(projectId);
+            await preCacheVersions(currentSong.versions);
+            await switchVersion(false);
+            Logger.info('Player initialized');
+          } catch (error) {
+            Logger.error('Error initializing player', error);
+          }
+        }
+
+        // Load and display available projects
+        async function loadProjects() {
+          Logger.info('Loading projects');
+          try {
+            const headers = await getAuthHeader();
+            const response = await fetch('/getSongVersions', { headers });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const result = await response.json();
+            
+            const projectList = document.getElementById('projectList');
+            projectList.innerHTML = '';
+            
+            result.songs.forEach(project => {
+              const projectCard = document.createElement('div');
+              projectCard.className = 'project-card';
+              projectCard.innerHTML = `
+                <h2>${project.name}</h2>
+                <p>${project.versions.length} version${project.versions.length === 1 ? '' : 's'}</p>
+              `;
+              
+              projectCard.addEventListener('click', async () => {
+                projectSection.style.display = 'none';
+                playerSection.style.display = 'block';
+                await initializePlayer(project.id);
+              });
+              
+              projectList.appendChild(projectCard);
+            });
+          } catch (error) {
+            Logger.error('Error loading projects', error);
+            if (error.message.includes('401')) {
+              alert('Session expired. Please sign in again.');
+              await auth.signOut();
+            }
+          }
         }
       });
     </script>

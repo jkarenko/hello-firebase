@@ -7,34 +7,29 @@ body {
 }
 
 .container {
-  background: white;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 .auth-section {
-  display: flex;
-  align-items: center;
-  gap: 15px;
+  text-align: right;
   margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #eee;
 }
 
 .auth-button {
-  background: #4285f4;
-  color: white;
+  padding: 8px 16px;
   border: none;
-  padding: 10px 20px;
   border-radius: 4px;
+  background-color: #4285f4;
+  color: white;
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.2s;
 }
 
 .auth-button:hover {
-  background: #3367d6;
+  background-color: #357abd;
 }
 
 #logoutBtn {
@@ -46,8 +41,8 @@ body {
 }
 
 .user-email {
+  margin-left: 10px;
   color: #666;
-  font-size: 14px;
 }
 
 h1 {
@@ -59,57 +54,51 @@ h1 {
 
 .version-selector {
   width: 100%;
-  padding: 10px;
-  margin-bottom: 20px;
-  border-radius: 6px;
+  max-width: 400px;
+  padding: 8px;
+  margin: 20px 0;
   border: 1px solid #ddd;
+  border-radius: 4px;
   font-size: 16px;
-  background: white;
 }
 
 .controls {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 15px;
+  margin: 20px 0;
 }
 
 .play-pause {
-  background: #4CAF50;
-  color: white;
+  padding: 10px 20px;
   border: none;
-  padding: 12px 24px;
-  border-radius: 6px;
+  border-radius: 4px;
+  background-color: #4285f4;
+  color: white;
   cursor: pointer;
   font-size: 16px;
-  transition: background-color 0.2s;
+  margin-right: 10px;
 }
 
 .play-pause:hover {
-  background: #45a049;
+  background-color: #357abd;
 }
 
 .time-display {
   font-size: 14px;
   color: #666;
-  font-family: monospace;
 }
 
 .progress-container {
   width: 100%;
-  height: 6px;
-  background: #ddd;
-  border-radius: 3px;
+  height: 8px;
+  background-color: #eee;
+  border-radius: 4px;
   cursor: pointer;
-  position: relative;
-  margin-bottom: 20px;
+  overflow: hidden;
 }
 
 .progress-bar {
   height: 100%;
-  background: #4CAF50;
-  border-radius: 3px;
-  width: 0%;
+  background-color: #4285f4;
+  width: 0;
   transition: width 0.1s linear;
 }
 
@@ -118,4 +107,87 @@ h1 {
   padding: 10px;
   border-radius: 4px;
   color: #666;
+}
+
+/* Project Selection Styles */
+.project-section {
+  text-align: center;
+}
+
+.project-section h1 {
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.project-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+}
+
+.project-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.project-card h2 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.project-card p {
+  margin: 0;
+  color: #666;
+}
+
+/* Player Section Styles */
+.player-section {
+  text-align: center;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.back-button {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.back-button button {
+  background: none;
+  border: none;
+  color: #4285f4;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+}
+
+.back-button button:hover {
+  color: #357abd;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .container {
+    padding: 10px;
+  }
+  
+  .project-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .version-selector {
+    width: 90%;
+  }
 } 

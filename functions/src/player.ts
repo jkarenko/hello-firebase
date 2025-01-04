@@ -54,51 +54,66 @@ export const getSongVersions = onRequest(
 
       // List all files in the songs directory
       logger.debug("Fetching files from storage", {
-        prefix: "audio/vesipaakaupunki/",
+        prefix: "audio/",
       });
       const [files] = await bucket.getFiles({
-        prefix: "audio/vesipaakaupunki/",
+        prefix: "audio/",
       });
 
-      // Group files by song
+      // Group files by project and song
       const songs: Song[] = [];
-      const versions: SongVersion[] = [];
+      const projectVersions = new Map<string, SongVersion[]>();
 
       logger.debug(`Found ${files.length} files in storage`);
 
       for (const file of files) {
-        // Skip the directory itself
-        if (file.name.endsWith("/")) {
+        // Skip non-mp3 files
+        if (!file.name.endsWith(".mp3")) {
           continue;
         }
 
-        // Get the filename without the path
-        const filename = file.name.split("/").pop() || "";
+        // Get the project name and filename
+        const parts = file.name.split("/");
+        if (parts.length !== 3) {
+          // Skip if not in format audio/project/file.mp3
+          continue;
+        }
+
+        const projectName = parts[1];
+        const filename = parts[2];
 
         // Get metadata from the file
         const [metadata] = await file.getMetadata();
         logger.debug("Processing file", {
+          projectName,
           filename,
           metadata: metadata.metadata,
         });
 
-        versions.push({
+        // Initialize versions array for this project if needed
+        if (!projectVersions.has(projectName)) {
+          projectVersions.set(projectName, []);
+        }
+
+        projectVersions.get(projectName)!.push({
           id: metadata.metadata?.id || filename,
-          displayName:
-            metadata.metadata?.displayName || filename.replace("Compassionfruitcake_", "").replace(".mp3", ""),
+          displayName: metadata.metadata?.displayName || filename.replace(/^[^_]*_/, "").replace(".mp3", ""),
           filename: filename,
         });
       }
 
-      songs.push({
-        id: "vesipaakaupunki",
-        name: "Vesipääkaupunki",
-        versions: versions.sort((a, b) => a.displayName.localeCompare(b.displayName)),
-      });
+      // Convert projects map to songs array
+      for (const [projectName, versions] of projectVersions) {
+        songs.push({
+          id: projectName,
+          name: projectName.charAt(0).toUpperCase() + projectName.slice(1), // Capitalize first letter
+          versions: versions.sort((a, b) => a.displayName.localeCompare(b.displayName)),
+        });
+      }
 
       logger.info("Successfully fetched song versions", {
         songCount: songs.length,
-        versionCount: versions.length,
+        versionCount: projectVersions.size,
         user: decodedToken.uid,
       });
 
@@ -124,8 +139,10 @@ export const getAudioUrl = onRequest(
   },
   async (request, response) => {
     const filename = request.query.filename as string;
+    const projectId = request.query.projectId as string;
     logger.info("getAudioUrl called", {
       filename,
+      projectId,
       ip: request.ip,
       userAgent: request.headers["user-agent"],
     });
@@ -135,14 +152,14 @@ export const getAudioUrl = onRequest(
       const decodedToken = await verifyAuth(request);
       logger.info("User authenticated", {uid: decodedToken.uid});
 
-      if (!filename) {
-        logger.warn("Missing filename in request");
-        response.status(400).json({error: "Filename is required"});
+      if (!filename || !projectId) {
+        logger.warn("Missing required parameters");
+        response.status(400).json({error: "Filename and projectId are required"});
         return;
       }
 
       // Construct the full path
-      const filePath = `audio/vesipaakaupunki/${filename}`;
+      const filePath = `audio/${projectId}/${filename}`;
       const file = bucket.file(filePath);
 
       logger.debug("Checking file existence", {filePath});
@@ -167,6 +184,7 @@ export const getAudioUrl = onRequest(
 
         logger.info("Successfully generated signed URL", {
           filename,
+          projectId,
           user: decodedToken.uid,
         });
 
@@ -177,6 +195,7 @@ export const getAudioUrl = onRequest(
       } catch (signError) {
         logger.error("Error generating signed URL:", signError, {
           filename,
+          projectId,
           stack: signError instanceof Error ? signError.stack : undefined,
         });
         throw signError;
@@ -186,11 +205,13 @@ export const getAudioUrl = onRequest(
         logger.warn("Unauthorized access attempt", {
           ip: request.ip,
           filename,
+          projectId,
         });
         response.status(401).json({error: "Unauthorized"});
       } else {
         logger.error("Error generating URL:", error, {
           filename,
+          projectId,
           stack: error instanceof Error ? error.stack : undefined,
         });
         response.status(500).json({error: "Internal server error"});
