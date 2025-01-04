@@ -15,7 +15,7 @@
     }
   ],
   "hosting": {
-    "public": "public",
+    "public": "hello-firebase-react/dist",
     "ignore": [
       "firebase.json",
       "**/.*",

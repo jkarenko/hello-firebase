@@ -6,6 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:functions": "npm --prefix functions run build",
+    "build:react": "npm --prefix hello-firebase-react run build",
+    "build": "npm run build:functions && npm run build:react",
     "dev": "FIREBASE_APP_STORAGE=localhost:9199 GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit",
     "start": "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit"
   },
