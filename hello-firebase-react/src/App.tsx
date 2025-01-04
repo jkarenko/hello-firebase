@@ -1,108 +1,66 @@
 import { useState, useEffect } from 'react';
+import { Card, CardBody } from "@nextui-org/react";
+import { initializeFirebase } from './firebase';
+import * as firebaseAuth from 'firebase/auth';
 import Auth from './components/Auth';
 import ProjectList from './components/ProjectList';
 import AudioPlayer from './components/AudioPlayer';
-import { initializeFirebase } from './firebase';
 import './App.css';
 
-function App() {
-  const [user, setUser] = useState<any>(null);
-  const [showPlayer, setShowPlayer] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+const App = () => {
+  const [user, setUser] = useState<firebaseAuth.User | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [auth, setAuth] = useState<firebaseAuth.Auth | null>(null);
+  const [provider, setProvider] = useState<firebaseAuth.GoogleAuthProvider | null>(null);
 
   useEffect(() => {
-    console.log('App mounted, initializing Firebase...');
-    
-    // Initialize Firebase
     const firebase = initializeFirebase();
     const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
+    
+    setAuth(auth);
+    setProvider(provider);
 
-    // Check current auth state
-    const {currentUser} = auth;
-    console.log('Current auth state:', { 
-      currentUser: currentUser?.email,
-      timestamp: new Date().toISOString()
-    });
-
-    // Handle redirect result
-    auth.getRedirectResult()
-      .then((result: any) => {
-        console.log('Redirect result:', {
-          user: result?.user?.email,
-          timestamp: new Date().toISOString()
-        });
-        if (result.user) {
-          console.log('Setting user from redirect:', result.user.email);
-          setUser(result.user);
-        }
-      })
-      .catch((error: any) => {
-        console.error('Redirect sign-in error:', {
-          code: error.code,
-          message: error.message,
-          timestamp: new Date().toISOString()
-        });
-        if (error.code !== 'auth/credential-already-in-use') {
-          alert('Error signing in. Please try again.');
-        }
-      });
-
-    // Listen for auth state changes
-    const unsubscribe = auth.onAuthStateChanged((user: any) => {
-      console.log('Auth state changed:', {
-        user: user?.email,
-        timestamp: new Date().toISOString()
-      });
+    const unsubscribe = auth.onAuthStateChanged((user: firebaseAuth.User | null) => {
       setUser(user);
       if (!user) {
-        setShowPlayer(false);
-        setSelectedProjectId(null);
+        setSelectedProject(null);
       }
     });
 
-    setIsInitialized(true);
-
-    return () => {
-      console.log('App unmounting, cleaning up...');
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
-  const handleProjectSelect = (projectId: string) => {
-    setSelectedProjectId(projectId);
-    setShowPlayer(true);
-  };
-
-  const handleBackToProjects = () => {
-    setShowPlayer(false);
-    setSelectedProjectId(null);
-  };
-
-  if (!isInitialized) {
+  if (!auth || !provider) {
     return <div>Loading...</div>;
   }
 
   return (
-    <div className="container">
-      <Auth 
-        user={user} 
-        auth={window.firebase.auth()} 
-        provider={new window.firebase.auth.GoogleAuthProvider()} 
-      />
-      
-      {user && !showPlayer && (
-        <ProjectList onProjectSelect={handleProjectSelect} />
-      )}
-      
-      {user && showPlayer && selectedProjectId && (
-        <AudioPlayer 
-          projectId={selectedProjectId}
-          onBack={handleBackToProjects}
-        />
-      )}
+    <div className="container mx-auto px-4">
+      <Card className="my-4">
+        <CardBody>
+          <div className="auth-section">
+            <Auth 
+              user={user}
+              auth={auth}
+              provider={provider}
+            />
+          </div>
+        </CardBody>
+      </Card>
+
+      {user && !selectedProject ? (
+        <ProjectList onProjectSelect={setSelectedProject} />
+      ) : user && selectedProject ? (
+        <div className="player-section">
+          <AudioPlayer 
+            projectId={selectedProject} 
+            onBack={() => setSelectedProject(null)} 
+          />
+        </div>
+      ) : null}
     </div>
   );
-}
+};
 
 export default App;
