@@ -1,21 +1,17 @@
 # Firebase TypeScript Practice Project
 
-A simple practice project to explore Firebase features using TypeScript. The project implements basic cloud functions and web hosting to demonstrate Firebase's capabilities.
+A simple practice project to explore Firebase features using TypeScript. The project implements cloud functions and web hosting to demonstrate Firebase's capabilities.
 
 ## Features
 
 - Cloud Functions with TypeScript
 - Firebase Hosting
-- Simple web interface with:
-  - Hello World endpoint
-  - Personalized greeting function
-  - D&D dice roller (supports multiple dice types and advantage/disadvantage rolls)
-  - Audio player with version control and caching
-    - Multiple versions of the same song
-    - Smooth version switching
-    - Background pre-caching for instant playback
-    - Progress bar and time display
-    - Browser caching for improved performance
+- Audio player with version control and caching
+  - Multiple versions of the same song
+  - Smooth version switching
+  - Background pre-caching for instant playback
+  - Progress bar and time display
+  - Browser caching for improved performance
 
 ## Tech Stack
 
@@ -58,7 +54,7 @@ or whatever port is specified in the output of the `firebase emulators:start` co
 
 ## Audio Player Features
 
-The audio player (`/player` endpoint) provides:
+The audio player provides:
 - Version selection dropdown
 - Play/Pause control
 - Progress bar with seek functionality
