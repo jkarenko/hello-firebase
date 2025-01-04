@@ -1,13 +1,18 @@
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {getStorage} from "firebase-admin/storage";
-import {initializeApp} from "firebase-admin/app";
+import {initializeApp, cert} from "firebase-admin/app";
+import {verifyToken} from "./auth";
 
-// Initialize Firebase Admin if not already done
-initializeApp();
+// Initialize Firebase Admin with service account key
+const serviceAccount = require("../service-account-key.json");
+initializeApp({
+  credential: cert(serviceAccount),
+  storageBucket: "jkarenko-hello-firebase.firebasestorage.app",
+});
 
 const storage = getStorage();
-const bucket = storage.bucket("jkarenko-hello-firebase.firebasestorage.app");
+const bucket = storage.bucket();
 
 interface SongVersion {
   id: string;
@@ -19,6 +24,16 @@ interface Song {
   id: string;
   name: string;
   versions: SongVersion[];
+}
+
+// Helper function to verify auth token from request
+async function verifyAuth(request: any) {
+  const authHeader = request.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new Error("No token provided");
+  }
+  const token = authHeader.split("Bearer ")[1];
+  return await verifyToken(token);
 }
 
 export const getSongVersions = onRequest(
@@ -33,6 +48,10 @@ export const getSongVersions = onRequest(
     });
 
     try {
+      // Verify authentication
+      const decodedToken = await verifyAuth(request);
+      logger.info("User authenticated", {uid: decodedToken.uid});
+
       // List all files in the songs directory
       logger.debug("Fetching files from storage", {
         prefix: "audio/vesipaakaupunki/",
@@ -80,14 +99,20 @@ export const getSongVersions = onRequest(
       logger.info("Successfully fetched song versions", {
         songCount: songs.length,
         versionCount: versions.length,
+        user: decodedToken.uid,
       });
 
       response.json({songs});
-    } catch (error) {
-      logger.error("Error fetching song versions:", error, {
-        stack: (error as Error).stack,
-      });
-      response.status(500).json({error: "Internal server error"});
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.message === "No token provided" || error.message === "Unauthorized")) {
+        logger.warn("Unauthorized access attempt", {ip: request.ip});
+        response.status(401).json({error: "Unauthorized"});
+      } else {
+        logger.error("Error fetching song versions:", error, {
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        response.status(500).json({error: "Internal server error"});
+      }
     }
   }
 );
@@ -106,6 +131,10 @@ export const getAudioUrl = onRequest(
     });
 
     try {
+      // Verify authentication
+      const decodedToken = await verifyAuth(request);
+      logger.info("User authenticated", {uid: decodedToken.uid});
+
       if (!filename) {
         logger.warn("Missing filename in request");
         response.status(400).json({error: "Filename is required"});
@@ -125,38 +154,47 @@ export const getAudioUrl = onRequest(
         return;
       }
 
-      // Get file metadata to use for cache validation
-      logger.debug("Fetching file metadata", {filePath});
-      const [metadata] = await file.getMetadata();
-      const etagValue = metadata.etag;
+      try {
+        // Get file metadata to get the ETag
+        const [metadata] = await file.getMetadata();
 
-      // Use Firebase Storage URL format with cache busting based on etag
-      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(
-        filePath
-      )}?alt=media&cache=${etagValue}`;
+        // Generate a signed URL that expires in 1 hour
+        const [url] = await file.getSignedUrl({
+          version: "v4",
+          action: "read",
+          expires: Date.now() + 60 * 60 * 1000, // 1 hour
+        });
 
-      // Set cache control headers
-      response.set("Access-Control-Allow-Origin", "*");
-      response.set("Access-Control-Allow-Methods", "GET");
-      response.set("Cache-Control", "public, max-age=300"); // Cache for 5 minutes
-      response.set("ETag", etagValue);
+        logger.info("Successfully generated signed URL", {
+          filename,
+          user: decodedToken.uid,
+        });
 
-      logger.info("Successfully generated audio URL", {
-        filename,
-        etag: etagValue,
-      });
-
-      response.json({
-        url: publicUrl,
-        cacheControl: "public, max-age=300",
-        etag: etagValue,
-      });
-    } catch (error) {
-      logger.error("Error generating URL:", error, {
-        filename,
-        stack: (error as Error).stack,
-      });
-      response.status(500).json({error: "Internal server error"});
+        response.json({
+          url,
+          etag: metadata.etag, // Include the ETag in the response
+        });
+      } catch (signError) {
+        logger.error("Error generating signed URL:", signError, {
+          filename,
+          stack: signError instanceof Error ? signError.stack : undefined,
+        });
+        throw signError;
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.message === "No token provided" || error.message === "Unauthorized")) {
+        logger.warn("Unauthorized access attempt", {
+          ip: request.ip,
+          filename,
+        });
+        response.status(401).json({error: "Unauthorized"});
+      } else {
+        logger.error("Error generating URL:", error, {
+          filename,
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        response.status(500).json({error: "Internal server error"});
+      }
     }
   }
 );
