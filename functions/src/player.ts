@@ -175,17 +175,29 @@ export const getAudioUrl = onRequest(
         // Get file metadata to get the ETag
         const [metadata] = await file.getMetadata();
 
-        // Generate a signed URL that expires in 1 hour
-        const [url] = await file.getSignedUrl({
-          version: "v4",
-          action: "read",
-          expires: Date.now() + 60 * 60 * 1000, // 1 hour
-        });
+        let url;
+        // Use environment variable or default to Firebase Storage URL
+        const storageHost = process.env.FIREBASE_APP_STORAGE || "storage.googleapis.com";
 
-        logger.info("Successfully generated signed URL", {
+        if (process.env.FUNCTIONS_EMULATOR === "true") {
+          // In emulator, return a direct URL
+          url = `http://${storageHost}/storage/v1/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+          logger.debug("Generated emulator URL", {url});
+        } else {
+          // In production, return a signed URL
+          [url] = await file.getSignedUrl({
+            version: "v4",
+            action: "read",
+            expires: Date.now() + 60 * 60 * 1000, // 1 hour
+          });
+          logger.debug("Generated signed URL", {url});
+        }
+
+        logger.info("Successfully generated URL", {
           filename,
           projectId,
           user: decodedToken.uid,
+          isEmulator: process.env.FUNCTIONS_EMULATOR === "true",
         });
 
         response.json({

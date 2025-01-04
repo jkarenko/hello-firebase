@@ -389,7 +389,7 @@
               });
             }
 
-            // Fetch from server if not cached or ETag mismatch
+            // Fetch audio using the URL provided by backend
             const audioResponse = await fetch(url);
             if (!audioResponse.ok) throw new Error(`HTTP error! status: ${audioResponse.status}`);
             

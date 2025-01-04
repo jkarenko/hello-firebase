@@ -38,5 +38,14 @@
   },
   "storage": {
     "rules": "storage.rules"
+  },
+  "emulators": {
+    "auth": {},
+    "functions": {},
+    "hosting": {},
+    "storage": {},
+    "ui": {
+      "enabled": true
+    }
   }
 }

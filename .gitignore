@@ -37,3 +37,6 @@ public/audio/**
 # Service account
 service-account-key.json
 **/service-account-key.json
+
+# Emulator data
+.emulator-data/
