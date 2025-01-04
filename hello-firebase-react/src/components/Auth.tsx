@@ -1,7 +1,9 @@
+import * as firebaseAuth from 'firebase/auth';
+
 interface AuthProps {
-  user: firebase.User | null;
-  auth: firebase.auth.Auth;
-  provider: firebase.auth.GoogleAuthProvider;
+  user: firebaseAuth.User | null;
+  auth: firebaseAuth.Auth;
+  provider: firebaseAuth.GoogleAuthProvider;
 }
 
 const Auth = ({ user, auth, provider }: AuthProps) => {
