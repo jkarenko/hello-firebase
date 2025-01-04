@@ -2,7 +2,8 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /audio/{songName}/{fileName} {
-      allow read: if true;  // Allow public read access to audio files
+      allow read: if request.auth != null 
+                  && request.auth.token != null;  // Ensure valid auth token
       allow write: if false;  // Keep write access restricted
     }
     match /{allPaths=**} {
