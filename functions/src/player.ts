@@ -39,7 +39,9 @@ export const getSongVersions = onRequest(
 
       for (const file of files) {
         // Skip the directory itself
-        if (file.name.endsWith("/")) continue;
+        if (file.name.endsWith("/")) {
+          continue;
+        }
 
         // Get the filename without the path
         const filename = file.name.split("/").pop() || "";
