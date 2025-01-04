@@ -23,28 +23,12 @@
     ],
     "rewrites": [
       {
-        "source": "/helloWorld",
-        "function": "helloWorld"
-      },
-      {
-        "source": "/greet/**",
-        "function": "greet"
-      },
-      {
-        "source": "/roll/**",
-        "function": "rollDice"
-      },
-      {
         "source": "/getSongVersions",
         "function": "getSongVersions"
       },
       {
         "source": "/getAudioUrl",
         "function": "getAudioUrl"
-      },
-      {
-        "source": "/player",
-        "destination": "/player.html"
       },
       {
         "source": "**",

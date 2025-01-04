@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Firebase Hello World</title>
+    <title>Vesipääkaupunki Player</title>
 
     <!-- Firebase SDK -->
     <script defer src="/__/firebase/11.1.0/firebase-app-compat.js"></script>
@@ -14,140 +14,307 @@
   </head>
   <body>
     <div class="container">
-      <h1>Firebase Functions Demo</h1>
+      <h1>Vesipääkaupunki Player</h1>
       
-      <div class="form-group">
-        <h2>Simple Hello World</h2>
-        <button onclick="callHelloWorld()">Call Hello World</button>
+      <select class="version-selector" id="versionSelect">
+        <option value="">Loading versions...</option>
+      </select>
+      
+      <div class="controls">
+        <button class="play-pause" id="playPauseBtn">Play</button>
+        <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
       </div>
-
-      <div class="form-group">
-        <h2>Personalized Greeting</h2>
-        <input type="text" id="nameInput" placeholder="Enter your name">
-        <button onclick="greetPerson()">Greet</button>
-      </div>
-
-      <div class="form-group">
-        <h2>D&D Dice Roller</h2>
-        <div></div>
-          <div>
-            <label for="diceInput">Roll for check/save/initiative</label>
-          </div>
-          <div></div>
-            <input type="radio" id="advantage" name="diceType" value="advantagecheck">
-            <label for="advantage">Advantage</label>
-            <input type="radio" id="disadvantage" name="diceType" value="disadvantagecheck">
-            <label for="disadvantage">Disadvantage</label>
-            <input type="radio" id="normal" name="diceType" value="normalcheck" checked>
-            <label for="normal">Normal</label>
-          </div>
-          <button onclick="rollDice20()">Roll</button>
-        </div>
-        <div>
-          <div>
-            <label for="diceInput">Roll for damage</label>
-          </div>
-          <input type="text" id="diceInput" placeholder="e.g., 3d6 or 1d20">
-          <button onclick="rollDice()">Roll</button>
-        </div>
+      
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar" id="progressBar"></div>
       </div>
 
       <div id="result"></div>
     </div>
 
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const resultDiv = document.getElementById('result');
+      // Logging utility
+      const Logger = {
+        LOG_LEVELS: {
+          DEBUG: 0,
+          INFO: 1,
+          WARN: 2,
+          ERROR: 3
+        },
+        currentLevel: 1, // Default to INFO
 
-        window.callHelloWorld = async function() {
-          try {
-            console.log('Calling helloWorld function...');
-            const response = await fetch('/helloWorld');
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+        setLevel(level) {
+          this.currentLevel = level;
+        },
+
+        formatMessage(level, message, data = {}) {
+          const timestamp = new Date().toISOString();
+          return `[${timestamp}] ${level}: ${message} ${Object.keys(data).length ? JSON.stringify(data) : ''}`;
+        },
+
+        debug(message, data) {
+          if (this.currentLevel <= this.LOG_LEVELS.DEBUG) {
+            console.debug(this.formatMessage('DEBUG', message, data));
+          }
+        },
+
+        info(message, data) {
+          if (this.currentLevel <= this.LOG_LEVELS.INFO) {
+            console.info(this.formatMessage('INFO', message, data));
+          }
+        },
+
+        warn(message, data) {
+          if (this.currentLevel <= this.LOG_LEVELS.WARN) {
+            console.warn(this.formatMessage('WARN', message, data));
+          }
+        },
+
+        error(message, error, data = {}) {
+          if (this.currentLevel <= this.LOG_LEVELS.ERROR) {
+            if (error instanceof Error) {
+              data.errorMessage = error.message;
+              data.stack = error.stack;
             }
-            const text = await response.text();
-            console.log('Response text:', text);
-            resultDiv.textContent = text;
-          } catch (error) {
-            console.error('Error:', error);
-            resultDiv.textContent = 'Error: ' + error.message;
+            console.error(this.formatMessage('ERROR', message, data));
           }
-        };
+        }
+      };
 
-        window.greetPerson = async function() {
-          const name = document.getElementById('nameInput').value;
-          if (!name) {
-            resultDiv.textContent = 'Please enter a name';
-            return;
-          }
+      // Set log level based on environment
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        Logger.setLevel(Logger.LOG_LEVELS.DEBUG);
+      }
 
-          try {
-            console.log(`Calling greet function with name: ${name}`);
-            const response = await fetch(`/greet/${name}`);
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+      document.addEventListener('DOMContentLoaded', async function() {
+        Logger.info('Application starting');
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let audioBuffer = null;
+        let sourceNode = null;
+        let startTime = 0;
+        let offset = 0;
+        let isPlaying = false;
+        let currentSong = null;
+        const audioBufferCache = new Map(); // Cache for audio buffers
+
+        const versionSelect = document.getElementById('versionSelect');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+
+        // Pre-cache all versions
+        async function preCacheVersions(versions) {
+          Logger.info('Starting pre-cache', { versionCount: versions.length });
+          const loadingPromises = versions.map(async version => {
+            try {
+              if (!audioBufferCache.has(version.filename)) {
+                const buffer = await loadAudio(version.filename);
+                audioBufferCache.set(version.filename, buffer);
+                Logger.debug('Pre-cached version', { version: version.displayName });
+              }
+            } catch (error) {
+              Logger.error('Error pre-caching version', error, { version: version.displayName });
             }
-            const text = await response.text();
-            console.log('Response text:', text);
-            resultDiv.textContent = decodeURIComponent(text);
-          } catch (error) {
-            console.error('Error:', error);
-            resultDiv.textContent = 'Error: ' + error.message;
-          }
-        };
+          });
 
-        window.rollDice = async function() {
-          const dicePattern = document.getElementById('diceInput').value;
-          if (!dicePattern) {
-            resultDiv.textContent = 'Please enter dice pattern (e.g., 3d6)';
-            return;
-          }
+          // Load all versions in parallel
+          await Promise.all(loadingPromises);
+          Logger.info('Pre-cache complete', { cachedVersions: audioBufferCache.size });
+        }
 
+        // Fetch available versions from Cloud Function
+        async function loadVersions() {
+          Logger.info('Loading versions');
           try {
-            console.log(`Rolling dice: ${dicePattern}`);
-            const response = await fetch(`/roll/${dicePattern}`);
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            const response = await fetch('/getSongVersions');
             const result = await response.json();
-            console.log('Roll result:', result);
-            resultDiv.textContent = `Rolled ${result.dice}: [${result.rolls.join(', ')}] = ${result.sum}`;
-          } catch (error) {
-            console.error('Error:', error);
-            resultDiv.textContent = 'Error: ' + error.message;
-          }
-        };
+            
+            // Clear loading option
+            versionSelect.innerHTML = '';
+            
+            // Assuming we're working with the first song for now
+            currentSong = result.songs[0];
+            Logger.debug('Loaded song data', { song: currentSong.name, versions: currentSong.versions.length });
+            
+            // Populate versions
+            currentSong.versions.forEach(version => {
+              const option = document.createElement('option');
+              option.value = version.filename;
+              option.textContent = version.displayName;
+              versionSelect.appendChild(option);
+            });
 
-        window.rollDice20 = async function() {
-          const diceType = document.querySelector('input[name="diceType"]:checked').value;
+            // Start pre-caching all versions
+            await preCacheVersions(currentSong.versions);
+
+            // Load the first version
+            await switchVersion(false);
+          } catch (error) {
+            Logger.error('Error loading versions', error);
+            versionSelect.innerHTML = '<option value="">Error loading versions</option>';
+          }
+        }
+
+        async function loadAudio(filename) {
+          Logger.debug('Loading audio', { filename });
+          // Check cache first
+          if (audioBufferCache.has(filename)) {
+            Logger.debug('Using cached audio', { filename });
+            return audioBufferCache.get(filename);
+          }
+
+          const response = await fetch(`/getAudioUrl?filename=${encodeURIComponent(filename)}`);
+          const { url } = await response.json();
+          
+          const audioResponse = await fetch(url);
+          const arrayBuffer = await audioResponse.arrayBuffer();
+          const buffer = await audioContext.decodeAudioData(arrayBuffer);
+          
+          // Store in cache
+          audioBufferCache.set(filename, buffer);
+          Logger.debug('Audio loaded and cached', { filename });
+          return buffer;
+        }
+
+        async function switchVersion(keepPlaying = true) {
+          const currentTime = getCurrentTime();
+          const wasPlaying = isPlaying;
+          const selectedVersion = versionSelect.value;
+          
+          Logger.info('Switching version', { 
+            version: selectedVersion,
+            currentTime,
+            wasPlaying,
+            keepPlaying
+          });
+          
+          if (isPlaying) {
+            stopAudio();
+          }
           
           try {
-            console.log(`Rolling d20 with ${diceType}`);
-            const response = await fetch(`/roll/${diceType}`);
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const result = await response.json();
-            console.log('Roll result:', result);
-            
-            let resultText = '';
-            if (diceType === 'advantagecheck' || diceType === 'disadvantagecheck') {
-              resultText = `Rolled with ${diceType === 'advantagecheck' ? 'advantage' : 'disadvantage'}: [${result.rolls.join(', ')}] = ${result.sum}`;
+            // Use cached version if available
+            audioBuffer = await loadAudio(selectedVersion);
+            if (wasPlaying && keepPlaying) {
+              playAudio(currentTime);
             } else {
-              resultText = `Rolled d20: ${result.sum}`;
+              offset = currentTime;
+              updateDisplay();
             }
-            
-            resultDiv.textContent = resultText;
+            Logger.debug('Version switch complete', { version: selectedVersion });
           } catch (error) {
-            console.error('Error:', error);
-            resultDiv.textContent = 'Error: ' + error.message;
+            Logger.error('Error switching version', error, { version: selectedVersion });
           }
-        };
+        }
+
+        function playAudio(startFrom = 0) {
+          if (!audioBuffer) {
+            Logger.warn('Attempted to play with no audio buffer');
+            return;
+          }
+
+          Logger.info('Playing audio', { startFrom });
+          sourceNode = audioContext.createBufferSource();
+          sourceNode.buffer = audioBuffer;
+          sourceNode.connect(audioContext.destination);
+
+          offset = startFrom;
+          startTime = audioContext.currentTime - offset;
+          sourceNode.start(0, offset);
+          isPlaying = true;
+          playPauseBtn.textContent = 'Pause';
+
+          requestAnimationFrame(updateDisplay);
+        }
+
+        function stopAudio() {
+          if (sourceNode) {
+            Logger.info('Stopping audio', { currentTime: getCurrentTime() });
+            sourceNode.stop();
+            sourceNode = null;
+          }
+          offset = getCurrentTime();
+          isPlaying = false;
+          playPauseBtn.textContent = 'Play';
+        }
+
+        function getCurrentTime() {
+          if (!audioBuffer) return 0;
+          if (isPlaying) {
+            return audioContext.currentTime - startTime;
+          }
+          return offset;
+        }
+
+        function formatTime(seconds) {
+          const minutes = Math.floor(seconds / 60);
+          const remainingSeconds = Math.floor(seconds % 60);
+          return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+          if (!audioBuffer) return;
+
+          const currentTime = getCurrentTime();
+          const duration = audioBuffer.duration;
+          
+          timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+          progressBar.style.width = `${(currentTime / duration) * 100}%`;
+
+          if (currentTime >= duration) {
+            Logger.info('Playback complete');
+            stopAudio();
+            offset = 0;
+          }
+
+          if (isPlaying) {
+            requestAnimationFrame(updateDisplay);
+          }
+        }
+
+        playPauseBtn.addEventListener('click', () => {
+          Logger.debug('Play/Pause clicked', { isPlaying });
+          if (isPlaying) {
+            stopAudio();
+          } else {
+            playAudio(offset);
+          }
+        });
+
+        progressContainer.addEventListener('click', (e) => {
+          if (!audioBuffer) {
+            Logger.warn('Seek attempted with no audio buffer');
+            return;
+          }
+          
+          const rect = progressContainer.getBoundingClientRect();
+          const ratio = (e.clientX - rect.left) / rect.width;
+          const newTime = ratio * audioBuffer.duration;
+          
+          Logger.info('Seeking', { 
+            fromTime: getCurrentTime(),
+            toTime: newTime,
+            ratio 
+          });
+          
+          if (isPlaying) {
+            stopAudio();
+            playAudio(newTime);
+          } else {
+            offset = newTime;
+            updateDisplay();
+          }
+        });
+
+        versionSelect.addEventListener('change', () => {
+          Logger.info('Version selected', { version: versionSelect.value });
+          switchVersion();
+        });
+
+        // Load versions and initialize player
+        await loadVersions();
+        Logger.info('Application initialized');
       });
     </script>
   </body>

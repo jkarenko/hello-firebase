@@ -27,8 +27,16 @@ export const getSongVersions = onRequest(
     region: "us-central1",
   },
   async (request, response) => {
+    logger.info("getSongVersions called", {
+      ip: request.ip,
+      userAgent: request.headers["user-agent"],
+    });
+
     try {
       // List all files in the songs directory
+      logger.debug("Fetching files from storage", {
+        prefix: "audio/vesipaakaupunki/",
+      });
       const [files] = await bucket.getFiles({
         prefix: "audio/vesipaakaupunki/",
       });
@@ -36,6 +44,8 @@ export const getSongVersions = onRequest(
       // Group files by song
       const songs: Song[] = [];
       const versions: SongVersion[] = [];
+
+      logger.debug(`Found ${files.length} files in storage`);
 
       for (const file of files) {
         // Skip the directory itself
@@ -48,6 +58,10 @@ export const getSongVersions = onRequest(
 
         // Get metadata from the file
         const [metadata] = await file.getMetadata();
+        logger.debug("Processing file", {
+          filename,
+          metadata: metadata.metadata,
+        });
 
         versions.push({
           id: metadata.metadata?.id || filename,
@@ -63,9 +77,16 @@ export const getSongVersions = onRequest(
         versions: versions.sort((a, b) => a.displayName.localeCompare(b.displayName)),
       });
 
+      logger.info("Successfully fetched song versions", {
+        songCount: songs.length,
+        versionCount: versions.length,
+      });
+
       response.json({songs});
     } catch (error) {
-      logger.error("Error fetching song versions:", error);
+      logger.error("Error fetching song versions:", error, {
+        stack: (error as Error).stack,
+      });
       response.status(500).json({error: "Internal server error"});
     }
   }
@@ -77,9 +98,16 @@ export const getAudioUrl = onRequest(
     region: "us-central1",
   },
   async (request, response) => {
+    const filename = request.query.filename as string;
+    logger.info("getAudioUrl called", {
+      filename,
+      ip: request.ip,
+      userAgent: request.headers["user-agent"],
+    });
+
     try {
-      const filename = request.query.filename as string;
       if (!filename) {
+        logger.warn("Missing filename in request");
         response.status(400).json({error: "Filename is required"});
         return;
       }
@@ -87,6 +115,8 @@ export const getAudioUrl = onRequest(
       // Construct the full path
       const filePath = `audio/vesipaakaupunki/${filename}`;
       const file = bucket.file(filePath);
+
+      logger.debug("Checking file existence", {filePath});
       const [exists] = await file.exists();
 
       if (!exists) {
@@ -96,6 +126,7 @@ export const getAudioUrl = onRequest(
       }
 
       // Get file metadata to use for cache validation
+      logger.debug("Fetching file metadata", {filePath});
       const [metadata] = await file.getMetadata();
       const etagValue = metadata.etag;
 
@@ -110,13 +141,21 @@ export const getAudioUrl = onRequest(
       response.set("Cache-Control", "public, max-age=300"); // Cache for 5 minutes
       response.set("ETag", etagValue);
 
+      logger.info("Successfully generated audio URL", {
+        filename,
+        etag: etagValue,
+      });
+
       response.json({
         url: publicUrl,
         cacheControl: "public, max-age=300",
         etag: etagValue,
       });
     } catch (error) {
-      logger.error("Error generating URL:", error);
+      logger.error("Error generating URL:", error, {
+        filename,
+        stack: (error as Error).stack,
+      });
       response.status(500).json({error: "Internal server error"});
     }
   }
