@@ -210,12 +210,25 @@
         loginBtn.addEventListener('click', async () => {
           try {
             Logger.info('Attempting login');
-            await auth.signInWithPopup(provider);
+            await auth.signInWithRedirect(provider);
           } catch (error) {
             Logger.error('Login error', error);
             alert('Error signing in. Please try again.');
           }
         });
+
+        // Handle redirect result
+        try {
+          const result = await auth.getRedirectResult();
+          if (result.user) {
+            Logger.info('Successfully signed in after redirect', { email: result.user.email });
+          }
+        } catch (error) {
+          Logger.error('Redirect sign-in error', error);
+          if (error.code !== 'auth/credential-already-in-use') {
+            alert('Error signing in. Please try again.');
+          }
+        }
 
         logoutBtn.addEventListener('click', async () => {
           try {
