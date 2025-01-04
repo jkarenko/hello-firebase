@@ -34,7 +34,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   const memoryCache = useRef<Map<string, AudioBuffer>>(new Map());
   const updateInterval = useRef<number | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const progressBarRef = useRef<HTMLDivElement>(null);
 
   // Initialize AudioContext and AudioCache
   useEffect(() => {
@@ -196,7 +195,9 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   };
 
   const getCurrentTime = useCallback(() => {
-    if (!audioBuffer.current) return 0;
+    if (!audioBuffer.current) {
+      return 0;
+    }
     if (isPlaying) {
       return audioContext.current!.currentTime - startTime.current;
     }
@@ -225,10 +226,12 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   }, [getCurrentTime]);
 
   const updateDisplay = useCallback(() => {
-    if (!audioBuffer.current) return;
+    if (!audioBuffer.current) {
+      return;
+    }
 
     const currentTime = getCurrentTime();
-    const duration = audioBuffer.current.duration;
+    const {duration} = audioBuffer.current;
     
     // Update both time and progress through state
     setCurrentTime(currentTime);
@@ -247,9 +250,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   }, [getCurrentTime, isPlaying, stopAudio]);
 
   // Remove getCurrentDisplayTime since we're not throttling updates anymore
-  const getCurrentDisplayTime = useCallback(() => {
-    return currentTime;
-  }, [currentTime]);
 
   const playAudio = useCallback((startFrom: number = 0) => {
     if (!audioContext.current || !audioBuffer.current) {

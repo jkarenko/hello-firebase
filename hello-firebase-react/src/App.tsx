@@ -19,7 +19,7 @@ function App() {
     const auth = firebase.auth();
 
     // Check current auth state
-    const currentUser = auth.currentUser;
+    const {currentUser} = auth;
     console.log('Current auth state:', { 
       currentUser: currentUser?.email,
       timestamp: new Date().toISOString()

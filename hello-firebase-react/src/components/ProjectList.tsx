@@ -21,7 +21,7 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const currentUser = window.firebase.auth().currentUser;
+        const {currentUser} = window.firebase.auth();
         if (!currentUser) {
           throw new Error('User not authenticated');
         }

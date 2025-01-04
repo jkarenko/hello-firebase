@@ -28,7 +28,9 @@ export const AudioCache = {
   },
 
   async get(key: string): Promise<ArrayBuffer | undefined> {
-    if (!this.db) return undefined;
+    if (!this.db) {
+      return undefined;
+    }
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([this.STORE_NAME], "readonly");
       const store = transaction.objectStore(this.STORE_NAME);
@@ -40,7 +42,9 @@ export const AudioCache = {
   },
 
   async getETag(key: string): Promise<string | undefined> {
-    if (!this.db) return undefined;
+    if (!this.db) {
+      return undefined;
+    }
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([this.ETAG_STORE], "readonly");
       const store = transaction.objectStore(this.ETAG_STORE);
@@ -52,7 +56,9 @@ export const AudioCache = {
   },
 
   async set(key: string, value: ArrayBuffer, etag: string): Promise<void> {
-    if (!this.db) return;
+    if (!this.db) {
+      return;
+    }
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([this.STORE_NAME, this.ETAG_STORE], "readwrite");
 
