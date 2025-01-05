@@ -477,9 +477,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           {project.name}
         </h1>
 
-        {/* File Upload */}
-        <FileUpload projectId={projectId} onUploadComplete={handleUploadComplete} />
-
         {/* Version selector */}
         {project.versions.length > 0 && (
           <Select
@@ -533,6 +530,9 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
             </div>
           </div>
         </div>
+
+        {/* File Upload */}
+        <FileUpload projectId={projectId} onUploadComplete={handleUploadComplete} />
 
         {error && (
           <Chip
