@@ -17,7 +17,7 @@ let storage: FirebaseStorage;
 
 const firebaseConfig = {
   apiKey: "AIzaSyBH2W_CEsu_3srnmQPx3cm1HEQS46_gnIM",
-  authDomain: "jkarenko-hello-firebase.firebase.web.app",
+  authDomain: "jkarenko-hello-firebase.firebaseapp.com",
   projectId: "jkarenko-hello-firebase",
   storageBucket: "jkarenko-hello-firebase.firebasestorage.app",
   messagingSenderId: "380797680247",
