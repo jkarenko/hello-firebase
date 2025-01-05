@@ -144,12 +144,37 @@ export const createProject = onCall(async (request) => {
     // Create a new project ID
     const projectId = db.collection("projects").doc().id;
 
-    // Create the project document
-    await createProjectAccess(projectId, request.auth.uid, name.trim());
+    try {
+      // Create the project document
+      await createProjectAccess(projectId, request.auth.uid, name.trim());
+    } catch (dbError) {
+      logger.error("Error creating project access:", {
+        error: dbError,
+        projectId,
+        userId: request.auth.uid,
+        name: name.trim(),
+      });
+      throw new HttpsError("internal", "Failed to create project access");
+    }
 
-    // Create the storage folder
-    const bucket = storage.bucket();
-    await bucket.file(`audio/${projectId}/.keep`).save("");
+    try {
+      // Create the storage folder
+      const bucket = storage.bucket();
+      await bucket.file(`audio/${projectId}/.keep`).save("");
+    } catch (storageError) {
+      logger.error("Error creating storage folder:", {
+        error: storageError,
+        projectId,
+        userId: request.auth.uid,
+      });
+      // Try to clean up the project document if storage fails
+      try {
+        await db.collection("projects").doc(projectId).delete();
+      } catch (cleanupError) {
+        logger.error("Error cleaning up project document after storage failure:", cleanupError);
+      }
+      throw new HttpsError("internal", "Failed to create project storage");
+    }
 
     // Return the new project data
     return {
@@ -158,7 +183,16 @@ export const createProject = onCall(async (request) => {
       versions: [],
     };
   } catch (error) {
-    logger.error("Error creating project:", error);
+    logger.error("Error in createProject:", {
+      error,
+      auth: request.auth
+        ? {
+            uid: request.auth.uid,
+            token: request.auth.token,
+          }
+        : null,
+      data: request.data,
+    });
     if (error instanceof HttpsError) {
       throw error;
     }
@@ -182,17 +216,48 @@ export const getProjects = onCall(async (request) => {
       if (!projectAccess) {
         return null;
       }
+
+      // Get versions for this project
+      const bucket = storage.bucket();
+      const prefix = `audio/${id}/`;
+      const [files] = await bucket.getFiles({
+        prefix,
+      });
+
+      // Filter and process versions
+      const versions = files
+        .filter((file) => !file.name.endsWith("/.keep") && file.name.endsWith(".mp3"))
+        .map((file) => {
+          const filename = file.name.split("/").pop()!;
+          const displayName = filename.substring(filename.indexOf("_") + 1).replace(".mp3", "");
+          return {filename, displayName};
+        });
+
+      logger.debug("Project versions:", {
+        projectId: id,
+        versions: versions.map((v) => v.filename),
+        count: versions.length,
+      });
+
       return {
         id: projectAccess.projectId,
         name: projectAccess.projectName,
-        versions: [], // Initialize with empty versions, they'll be loaded separately
+        versions,
       };
     });
 
     const projects = (await Promise.all(projectPromises)).filter((p): p is NonNullable<typeof p> => p !== null);
 
+    logger.debug("All projects with versions:", {
+      projects: projects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        versionCount: p.versions.length,
+      })),
+    });
+
     return {
-      songs: projects, // Keep the same response format as before
+      songs: projects,
     };
   } catch (error) {
     logger.error("Error getting projects:", error);
@@ -203,96 +268,178 @@ export const getProjects = onCall(async (request) => {
   }
 });
 
-export const getUploadUrl = onCall(async (request) => {
-  try {
-    // Ensure user is authenticated
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "User must be authenticated");
+export const getUploadUrl = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR ? true : ["https://jkarenko-hello-firebase.web.app"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId, filename} = request.data;
+      if (!projectId || !filename) {
+        throw new HttpsError("invalid-argument", "Project ID and filename are required");
+      }
+
+      // Check if user has access to the project
+      const hasAccess = await hasProjectAccess(request.auth.uid, projectId);
+      if (!hasAccess) {
+        throw new HttpsError("permission-denied", "You don't have access to this project");
+      }
+
+      // Generate a signed URL for upload
+      const bucket = storage.bucket();
+      const file = bucket.file(`audio/${projectId}/${filename}`);
+
+      // URL expires in 15 minutes
+      const [signedUrl] = await file.getSignedUrl({
+        version: "v4",
+        action: "write",
+        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        contentType: "audio/*",
+      });
+
+      return {signedUrl};
+    } catch (error) {
+      logger.error("Error generating upload URL:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to generate upload URL");
     }
-
-    const {projectId, filename} = request.data;
-    if (!projectId || !filename) {
-      throw new HttpsError("invalid-argument", "Project ID and filename are required");
-    }
-
-    // Check if user has access to the project
-    const hasAccess = await hasProjectAccess(request.auth.uid, projectId);
-    if (!hasAccess) {
-      throw new HttpsError("permission-denied", "You don't have access to this project");
-    }
-
-    // Generate a signed URL for upload
-    const bucket = storage.bucket();
-    const file = bucket.file(`audio/${projectId}/${filename}`);
-
-    // URL expires in 15 minutes
-    const [signedUrl] = await file.getSignedUrl({
-      version: "v4",
-      action: "write",
-      expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-      contentType: "audio/*",
-    });
-
-    return {signedUrl};
-  } catch (error) {
-    logger.error("Error generating upload URL:", error);
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-    throw new HttpsError("internal", "Failed to generate upload URL");
   }
-});
+);
 
-export const getProject = onCall(async (request) => {
-  try {
-    // Ensure user is authenticated
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "User must be authenticated");
-    }
+export const getProject = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR ? true : ["https://jkarenko-hello-firebase.web.app"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
 
-    const {projectId} = request.data;
-    if (!projectId) {
-      throw new HttpsError("invalid-argument", "Project ID is required");
-    }
+      const {projectId} = request.data;
+      if (!projectId) {
+        throw new HttpsError("invalid-argument", "Project ID is required");
+      }
 
-    // Check if user has access to the project
-    const hasAccess = await hasProjectAccess(request.auth.uid, projectId);
-    if (!hasAccess) {
-      throw new HttpsError("permission-denied", "You don't have access to this project");
-    }
+      // Check if user has access to the project
+      const hasAccess = await hasProjectAccess(request.auth.uid, projectId);
+      if (!hasAccess) {
+        throw new HttpsError("permission-denied", "You don't have access to this project");
+      }
 
-    // Get project data
-    const projectAccess = await getProjectAccess(projectId);
-    if (!projectAccess) {
-      throw new HttpsError("not-found", "Project not found");
-    }
+      // Get project data
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
 
-    // List files in the project's storage folder
-    const bucket = storage.bucket();
-    const [files] = await bucket.getFiles({
-      prefix: `audio/${projectId}/`,
-      delimiter: "/",
-    });
+      // List files in the project's storage folder
+      const bucket = storage.bucket();
+      logger.debug("Storage bucket info:", {
+        projectId,
+        bucketName: bucket.name,
+        exists: await bucket.exists().then(([exists]) => exists),
+      });
 
-    // Filter out .keep file and create version objects
-    const versions = files
-      .filter((file) => !file.name.endsWith("/.keep"))
-      .map((file) => {
+      const prefix = `audio/${projectId}/`;
+      logger.debug("Searching for files with prefix:", {prefix});
+
+      const [files] = await bucket.getFiles({
+        prefix,
+        // Removing the delimiter as it might be restricting our results
+      });
+
+      logger.debug("Raw files found in storage:", {
+        projectId,
+        allFiles: files.map((f) => f.name),
+        filesCount: files.length,
+      });
+
+      // Filter out .keep file and create version objects
+      const filteredFiles = files.filter((file) => {
+        const isKeepFile = file.name.endsWith("/.keep");
+        const isMP3 = file.name.endsWith(".mp3");
+        const isInProject = file.name.startsWith(prefix);
+        return !isKeepFile && isMP3 && isInProject;
+      });
+
+      logger.debug("Files after filtering:", {
+        projectId,
+        filteredFiles: filteredFiles.map((f) => f.name),
+        filteredCount: filteredFiles.length,
+      });
+
+      const versions = filteredFiles.map((file) => {
         const filename = file.name.split("/").pop()!;
-        const displayName = filename.substring(filename.indexOf("_") + 1);
+        const displayName = filename.substring(filename.indexOf("_") + 1).replace(".mp3", "");
         return {filename, displayName};
       });
 
-    return {
-      id: projectAccess.projectId,
-      name: projectAccess.projectName,
-      versions,
-    };
-  } catch (error) {
-    logger.error("Error getting project:", error);
-    if (error instanceof HttpsError) {
-      throw error;
+      logger.debug("Final processed versions:", {
+        projectId,
+        versions: versions.map((v) => ({filename: v.filename, displayName: v.displayName})),
+        versionsCount: versions.length,
+      });
+
+      return {
+        id: projectAccess.projectId,
+        name: projectAccess.projectName,
+        versions,
+      };
+    } catch (error) {
+      logger.error("Error getting project:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to get project");
     }
-    throw new HttpsError("internal", "Failed to get project");
   }
-});
+);
+
+export const listProjects = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR ? true : ["https://jkarenko-hello-firebase.web.app"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      // Get all project IDs the user has access to
+      const projectIds = await getUserProjects(request.auth.uid);
+
+      // Get full project data for each ID
+      const projectPromises = projectIds.map(async (id) => {
+        const projectAccess = await getProjectAccess(id);
+        if (!projectAccess) {
+          return null;
+        }
+        return {
+          id: projectAccess.projectId,
+          name: projectAccess.projectName,
+          createdAt: projectAccess.createdAt.toDate().toISOString(),
+        };
+      });
+
+      const projects = (await Promise.all(projectPromises)).filter((p): p is NonNullable<typeof p> => p !== null);
+
+      return projects;
+    } catch (error) {
+      logger.error("Error listing projects:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to list projects");
+    }
+  }
+);

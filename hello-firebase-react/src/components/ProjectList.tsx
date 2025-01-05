@@ -48,7 +48,12 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
       setNewProjectName('');
       onClose();
     } catch (err) {
-      console.error('Error creating project:', err);
+      console.error('Error creating project:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        code: err instanceof Error && 'code' in err ? (err as any).code : 'unknown',
+        details: err instanceof Error && 'details' in err ? (err as any).details : 'no details'
+      });
       const errorMessage = err instanceof Error ? err.message : 'Failed to create project';
       setError(errorMessage);
     }
