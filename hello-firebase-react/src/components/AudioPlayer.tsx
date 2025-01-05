@@ -3,6 +3,7 @@ import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner } from "@next
 import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
 import { AudioCache } from '../utils/AudioCache';
 import FileUpload from './FileUpload';
+import ShareProject from './ShareProject';
 import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 
@@ -461,20 +462,25 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardBody className="flex flex-col gap-8 p-8">
-        {/* Back button */}
-        <Button
-          variant="light"
-          color="primary"
-          onPress={onBack}
-          className="w-fit"
-          startContent={<span>‹</span>}
-        >
-          Back to projects
-        </Button>
+        {/* Header section with back button and share button */}
+        <div className="flex justify-between items-center">
+          <Button
+            variant="light"
+            color="primary"
+            onPress={onBack}
+            className="w-fit"
+            startContent={<span>‹</span>}
+          >
+            Back to projects
+          </Button>
+          {project && (
+            <ShareProject projectId={projectId} projectName={project.name} />
+          )}
+        </div>
 
         {/* Project title */}
         <h1 className="text-4xl font-normal text-left text-foreground">
-          {project.name}
+          {project?.name}
         </h1>
 
         {/* Version selector */}
