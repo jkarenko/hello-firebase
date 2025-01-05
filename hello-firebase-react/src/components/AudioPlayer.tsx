@@ -6,6 +6,7 @@ import FileUpload from './FileUpload';
 import ShareProject from './ShareProject';
 import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
+import { getDisplayName } from '../../../shared/audio';
 
 interface Version {
   filename: string;
@@ -493,7 +494,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           >
             {project.versions.map((version) => (
               <SelectItem key={version.filename} value={version.filename}>
-                {version.displayName}
+                {getDisplayName(version.filename)}
               </SelectItem>
             ))}
           </Select>
@@ -538,7 +539,11 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
         </div>
 
         {/* File Upload */}
-        <FileUpload projectId={projectId} onUploadComplete={handleUploadComplete} />
+        <FileUpload 
+          projectId={projectId} 
+          onUploadComplete={handleUploadComplete} 
+          existingVersions={project?.versions.map(v => v.filename) || []}
+        />
 
         {error && (
           <Chip

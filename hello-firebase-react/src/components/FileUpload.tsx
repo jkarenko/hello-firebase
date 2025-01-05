@@ -8,9 +8,10 @@ import { SUPPORTED_AUDIO_FORMATS, isSupportedAudioFile, SupportedAudioFormat } f
 interface FileUploadProps {
   projectId: string;
   onUploadComplete: () => void;
+  existingVersions: string[];
 }
 
-const FileUpload = ({ projectId, onUploadComplete }: FileUploadProps) => {
+const FileUpload = ({ projectId, onUploadComplete, existingVersions }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +22,15 @@ const FileUpload = ({ projectId, onUploadComplete }: FileUploadProps) => {
   const supportedFormatsDisplay = SUPPORTED_AUDIO_FORMATS
     .map((format: SupportedAudioFormat) => format.replace('.', '').toUpperCase())
     .join(', ');
+
+  // Helper function to add timestamp prefix to filename
+  const getFilenameWithTimestamp = (originalName: string): string => {
+    // Get current timestamp
+    const timestamp = Date.now();
+    
+    // Create filename with timestamp prefix
+    return `${timestamp}_${originalName}`;
+  };
 
   // Reset success state after 3 seconds
   useEffect(() => {
@@ -55,9 +65,13 @@ const FileUpload = ({ projectId, onUploadComplete }: FileUploadProps) => {
         throw new Error(`Unsupported file format. Please upload ${supportedFormatsDisplay} files only.`);
       }
 
-      // Generate a unique filename
-      const timestamp = Date.now();
-      const filename = `${timestamp}_${file.name}`;
+      // Add timestamp suffix to filename
+      const filename = getFilenameWithTimestamp(file.name);
+
+      // Check if file already exists
+      if (existingVersions.includes(filename)) {
+        throw new Error('A file with this exact name and date already exists. Please try again in a moment.');
+      }
 
       // Get storage reference
       const storage = getFirebaseStorage();
