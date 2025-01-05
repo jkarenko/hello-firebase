@@ -270,7 +270,9 @@ export const getProjects = onCall(async (request) => {
 
 export const getUploadUrl = onCall(
   {
-    cors: process.env.FUNCTIONS_EMULATOR ? true : ["https://jkarenko-hello-firebase.web.app"],
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
   },
   async (request) => {
     try {
@@ -315,7 +317,9 @@ export const getUploadUrl = onCall(
 
 export const getProject = onCall(
   {
-    cors: process.env.FUNCTIONS_EMULATOR ? true : ["https://jkarenko-hello-firebase.web.app"],
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
   },
   async (request) => {
     try {
@@ -406,7 +410,9 @@ export const getProject = onCall(
 
 export const listProjects = onCall(
   {
-    cors: process.env.FUNCTIONS_EMULATOR ? true : ["https://jkarenko-hello-firebase.web.app"],
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
   },
   async (request) => {
     try {
@@ -431,9 +437,7 @@ export const listProjects = onCall(
         };
       });
 
-      const projects = (await Promise.all(projectPromises)).filter((p): p is NonNullable<typeof p> => p !== null);
-
-      return projects;
+      return (await Promise.all(projectPromises)).filter((p): p is NonNullable<typeof p> => p !== null);
     } catch (error) {
       logger.error("Error listing projects:", error);
       if (error instanceof HttpsError) {
