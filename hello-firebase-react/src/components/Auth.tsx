@@ -13,14 +13,17 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
   const handleLogin = async () => {
     try {
       console.log('Starting sign in with redirect');
-      console.log('Current auth instance:', auth);
-      console.log('Current provider:', provider);
       
-      // Configure provider
+      // Configure provider with specific settings
+      provider.addScope('email');
+      provider.addScope('profile');
       provider.setCustomParameters({
-        prompt: 'select_account'
+        prompt: 'select_account',
+        login_hint: '',  // Clear any previous login hint
+        auth_type: 'reauthenticate'  // Force re-authentication
       });
       
+      // Initiate the redirect
       await signInWithRedirect(auth, provider);
       console.log('Redirect initiated');
     } catch (error) {
@@ -34,6 +37,8 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
       console.log('Starting sign out');
       await signOut(auth);
       console.log('Sign out complete');
+      // Force reload after logout to clear any cached state
+      window.location.reload();
     } catch (error) {
       console.error('Logout error:', error);
       alert('Error signing out. Please try again.');

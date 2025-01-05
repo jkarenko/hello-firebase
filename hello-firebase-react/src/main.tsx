@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { NextUIProvider } from '@nextui-org/react';
 import './index.css';
 import App from './App';
+import { initializeFirebase } from './firebase';
+
+// Initialize Firebase first
+initializeFirebase();
 
 const root = createRoot(document.getElementById('root')!);
 
