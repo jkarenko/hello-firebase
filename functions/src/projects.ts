@@ -560,8 +560,8 @@ export const getCollaborators = onCall(
       });
 
       return (await Promise.all(collaboratorPromises))
-              .filter((c): c is NonNullable<typeof c> => c !== null)
-              .sort((a, b) => a.email.localeCompare(b.email));
+        .filter((c): c is NonNullable<typeof c> => c !== null)
+        .sort((a, b) => a.email.localeCompare(b.email));
     } catch (error) {
       logger.error("Error getting collaborators:", error);
       if (error instanceof HttpsError) {
@@ -640,6 +640,56 @@ export const updateCollaborator = onCall(
         throw error;
       }
       throw new HttpsError("internal", "Failed to update collaborator");
+    }
+  }
+);
+
+export const getProjectOwner = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId} = request.data;
+      if (!projectId) {
+        throw new HttpsError("invalid-argument", "Project ID is required");
+      }
+
+      // Check if user has access to the project
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      // Check if user has access to this project
+      const hasAccess = await hasProjectAccess(request.auth.uid, projectId);
+      if (!hasAccess) {
+        throw new HttpsError("permission-denied", "You don't have access to this project");
+      }
+
+      // Get owner's email
+      try {
+        const owner = await getAuth().getUser(projectAccess.owner);
+        return {
+          email: owner.email || "",
+        };
+      } catch (error) {
+        logger.error("Error getting owner info:", error);
+        throw new HttpsError("internal", "Failed to get owner information");
+      }
+    } catch (error) {
+      logger.error("Error getting project owner:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to get project owner");
     }
   }
 );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure, Switch } from "@nextui-org/react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, Input, useDisclosure, Switch } from "@nextui-org/react";
 import { UserPlusIcon } from '@heroicons/react/24/outline';
 import { getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -19,22 +19,22 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [ownerEmail, setOwnerEmail] = useState<string>('');
 
   const fetchCollaborators = async () => {
     try {
-      setIsLoading(true);
       const functions = getFirebaseFunctions();
       const getCollaboratorsFn = httpsCallable(functions, 'getCollaborators');
       const result = await getCollaboratorsFn({ projectId });
       setCollaborators(result.data as Collaborator[]);
+
+      // Get owner email
+      const ownerInfo = await httpsCallable(functions, 'getProjectOwner')({ projectId });
+      setOwnerEmail((ownerInfo.data as { email: string }).email);
     } catch (err) {
       console.error('Error fetching collaborators:', err);
-    } finally {
-      setIsLoading(false);
     }
   };
-  isLoading && console.log('Loading...');
 
   useEffect(() => {
     if (isOpen) {
@@ -82,16 +82,39 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
         <ModalContent>
           <ModalHeader>Share {projectName}</ModalHeader>
           <ModalBody>
-            <div className="space-y-4">
-              <Input
-                label="Email Address"
-                placeholder="Enter collaborator's email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                errorMessage={error}
-              />
+            <div className="space-y-6">
+              {/* Add collaborator section */}
+              <div className="flex gap-2">
+                <Input
+                  label="Email Address"
+                  placeholder="Enter collaborator's email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  errorMessage={error}
+                  className="flex-grow"
+                />
+                <Button 
+                  color="primary"
+                  className="self-end"
+                  onPress={handleShare}
+                  isDisabled={!email.trim()}
+                >
+                  Share
+                </Button>
+              </div>
+
+              {/* Owner section */}
+              {ownerEmail && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Owner</h3>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">{ownerEmail}</span>
+                  </div>
+                </div>
+              )}
               
+              {/* Collaborators section */}
               {collaborators.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium">Collaborators</h3>
@@ -113,18 +136,6 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
               )}
             </div>
           </ModalBody>
-          <ModalFooter>
-            <Button variant="light" onPress={onClose}>
-              Cancel
-            </Button>
-            <Button 
-              color="primary" 
-              onPress={handleShare}
-              isDisabled={!email.trim()}
-            >
-              Share
-            </Button>
-          </ModalFooter>
         </ModalContent>
       </Modal>
     </>
