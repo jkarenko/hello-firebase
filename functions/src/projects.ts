@@ -272,7 +272,12 @@ export const getUploadUrl = onCall(
   {
     cors: process.env.FUNCTIONS_EMULATOR
       ? true
-      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+      : [
+          "https://jkarenko-hello-firebase.web.app",
+          "https://jkarenko-hello-firebase.firebaseapp.com",
+          "http://localhost:5000",
+          "http://127.0.0.1:5000",
+        ],
   },
   async (request) => {
     try {
@@ -302,6 +307,7 @@ export const getUploadUrl = onCall(
         action: "write",
         expires: Date.now() + 15 * 60 * 1000, // 15 minutes
         contentType: "audio/*",
+        queryParams: {userToken: request.auth.token.uid}, // Add user token to URL
       });
 
       return {signedUrl};
