@@ -202,3 +202,97 @@ export const getProjects = onCall(async (request) => {
     throw new HttpsError("internal", "Failed to get projects");
   }
 });
+
+export const getUploadUrl = onCall(async (request) => {
+  try {
+    // Ensure user is authenticated
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const {projectId, filename} = request.data;
+    if (!projectId || !filename) {
+      throw new HttpsError("invalid-argument", "Project ID and filename are required");
+    }
+
+    // Check if user has access to the project
+    const hasAccess = await hasProjectAccess(request.auth.uid, projectId);
+    if (!hasAccess) {
+      throw new HttpsError("permission-denied", "You don't have access to this project");
+    }
+
+    // Generate a signed URL for upload
+    const bucket = storage.bucket();
+    const file = bucket.file(`audio/${projectId}/${filename}`);
+
+    // URL expires in 15 minutes
+    const [signedUrl] = await file.getSignedUrl({
+      version: "v4",
+      action: "write",
+      expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+      contentType: "audio/*",
+    });
+
+    return {signedUrl};
+  } catch (error) {
+    logger.error("Error generating upload URL:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", "Failed to generate upload URL");
+  }
+});
+
+export const getProject = onCall(async (request) => {
+  try {
+    // Ensure user is authenticated
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const {projectId} = request.data;
+    if (!projectId) {
+      throw new HttpsError("invalid-argument", "Project ID is required");
+    }
+
+    // Check if user has access to the project
+    const hasAccess = await hasProjectAccess(request.auth.uid, projectId);
+    if (!hasAccess) {
+      throw new HttpsError("permission-denied", "You don't have access to this project");
+    }
+
+    // Get project data
+    const projectAccess = await getProjectAccess(projectId);
+    if (!projectAccess) {
+      throw new HttpsError("not-found", "Project not found");
+    }
+
+    // List files in the project's storage folder
+    const bucket = storage.bucket();
+    const [files] = await bucket.getFiles({
+      prefix: `audio/${projectId}/`,
+      delimiter: "/",
+    });
+
+    // Filter out .keep file and create version objects
+    const versions = files
+      .filter((file) => !file.name.endsWith("/.keep"))
+      .map((file) => {
+        const filename = file.name.split("/").pop()!;
+        const displayName = filename.substring(filename.indexOf("_") + 1);
+        return {filename, displayName};
+      });
+
+    return {
+      id: projectAccess.projectId,
+      name: projectAccess.projectName,
+      versions,
+    };
+  } catch (error) {
+    logger.error("Error getting project:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", "Failed to get project");
+  }
+});
