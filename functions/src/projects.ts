@@ -1,5 +1,6 @@
 import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {getStorage} from "firebase-admin/storage";
+import {getAuth} from "firebase-admin/auth";
 import * as logger from "firebase-functions/logger";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 
@@ -90,7 +91,7 @@ export async function createProjectAccess(projectId: string, ownerUid: string, p
   }
 }
 
-export async function addCollaborator(
+export async function addProjectCollaborator(
   projectId: string,
   collaboratorUid: string,
   role: "reader" | "editor" = "reader"
@@ -453,3 +454,62 @@ export const listProjects = onCall(
     }
   }
 );
+
+export const addCollaborator = onCall(async (request) => {
+  try {
+    // Ensure user is authenticated
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const {projectId, email} = request.data;
+    if (!projectId || !email) {
+      throw new HttpsError("invalid-argument", "Project ID and email are required");
+    }
+
+    // Check if user has access to the project
+    const projectAccess = await getProjectAccess(projectId);
+    if (!projectAccess) {
+      throw new HttpsError("not-found", "Project not found");
+    }
+
+    // Check if user is the owner
+    if (projectAccess.owner !== request.auth.uid) {
+      throw new HttpsError("permission-denied", "Only the project owner can add collaborators");
+    }
+
+    // Get user by email
+    try {
+      const userRecord = await getAuth().getUserByEmail(email);
+
+      // Don't allow adding the owner as a collaborator
+      if (userRecord.uid === projectAccess.owner) {
+        throw new HttpsError("invalid-argument", "Cannot add project owner as a collaborator");
+      }
+
+      // Add collaborator with reader role
+      await addProjectCollaborator(projectId, userRecord.uid);
+
+      logger.info("Added collaborator to project", {
+        projectId,
+        collaboratorUid: userRecord.uid,
+        collaboratorEmail: email,
+        addedBy: request.auth.uid,
+      });
+
+      return {success: true};
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      logger.error("Error adding collaborator:", error);
+      throw new HttpsError("not-found", "User not found");
+    }
+  } catch (error) {
+    logger.error("Error in addCollaborator:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", "Failed to add collaborator");
+  }
+});
