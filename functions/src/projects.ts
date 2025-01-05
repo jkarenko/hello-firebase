@@ -1,7 +1,10 @@
-import {getFirestore} from "firebase-admin/firestore";
+import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
+import {getStorage} from "firebase-admin/storage";
 import * as logger from "firebase-functions/logger";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 
 const db = getFirestore();
+const storage = getStorage();
 
 export interface ProjectAccess {
   projectId: string;
@@ -10,11 +13,11 @@ export interface ProjectAccess {
   collaborators: {
     [uid: string]: {
       role: "reader" | "editor";
-      addedAt: FirebaseFirestore.Timestamp;
+      addedAt: Timestamp;
     };
   };
-  createdAt: FirebaseFirestore.Timestamp;
-  updatedAt: FirebaseFirestore.Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export async function getProjectAccess(projectId: string): Promise<ProjectAccess | null> {
@@ -72,7 +75,7 @@ export async function hasProjectAccess(uid: string, projectId: string): Promise<
 
 export async function createProjectAccess(projectId: string, ownerUid: string, projectName: string): Promise<void> {
   try {
-    const now = FirebaseFirestore.Timestamp.now();
+    const now = Timestamp.now();
     await db.collection("projects").doc(projectId).set({
       projectId,
       projectName,
@@ -93,7 +96,7 @@ export async function addCollaborator(
   role: "reader" | "editor" = "reader"
 ): Promise<void> {
   try {
-    const now = FirebaseFirestore.Timestamp.now();
+    const now = Timestamp.now();
     await db
       .collection("projects")
       .doc(projectId)
@@ -112,12 +115,12 @@ export async function addCollaborator(
 
 export async function removeCollaborator(projectId: string, collaboratorUid: string): Promise<void> {
   try {
-    const now = FirebaseFirestore.Timestamp.now();
+    const now = Timestamp.now();
     await db
       .collection("projects")
       .doc(projectId)
       .update({
-        [`collaborators.${collaboratorUid}`]: FirebaseFirestore.FieldValue.delete(),
+        [`collaborators.${collaboratorUid}`]: FieldValue.delete(),
         updatedAt: now,
       });
   } catch (error) {
@@ -125,3 +128,77 @@ export async function removeCollaborator(projectId: string, collaboratorUid: str
     throw error;
   }
 }
+
+export const createProject = onCall(async (request) => {
+  try {
+    // Ensure user is authenticated
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    const {name} = request.data;
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      throw new HttpsError("invalid-argument", "Project name is required");
+    }
+
+    // Create a new project ID
+    const projectId = db.collection("projects").doc().id;
+
+    // Create the project document
+    await createProjectAccess(projectId, request.auth.uid, name.trim());
+
+    // Create the storage folder
+    const bucket = storage.bucket();
+    await bucket.file(`audio/${projectId}/.keep`).save("");
+
+    // Return the new project data
+    return {
+      id: projectId,
+      name: name.trim(),
+      versions: [],
+    };
+  } catch (error) {
+    logger.error("Error creating project:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", "Failed to create project");
+  }
+});
+
+export const getProjects = onCall(async (request) => {
+  try {
+    // Ensure user is authenticated
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated");
+    }
+
+    // Get all project IDs the user has access to
+    const projectIds = await getUserProjects(request.auth.uid);
+
+    // Get full project data for each ID
+    const projectPromises = projectIds.map(async (id) => {
+      const projectAccess = await getProjectAccess(id);
+      if (!projectAccess) {
+        return null;
+      }
+      return {
+        id: projectAccess.projectId,
+        name: projectAccess.projectName,
+        versions: [], // Initialize with empty versions, they'll be loaded separately
+      };
+    });
+
+    const projects = (await Promise.all(projectPromises)).filter((p): p is NonNullable<typeof p> => p !== null);
+
+    return {
+      songs: projects, // Keep the same response format as before
+    };
+  } catch (error) {
+    logger.error("Error getting projects:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", "Failed to get projects");
+  }
+});

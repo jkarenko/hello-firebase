@@ -11,3 +11,4 @@ initializeApp({
 // Export all functions
 export * from "./player";
 export * from "./auth";
+export * from "./projects";

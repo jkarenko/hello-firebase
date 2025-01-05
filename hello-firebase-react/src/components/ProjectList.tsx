@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@nextui-org/react";
 
 interface Project {
   id: string;
@@ -17,6 +18,28 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [newProjectName, setNewProjectName] = useState('');
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const handleCreateProject = async () => {
+    try {
+      const {currentUser} = window.firebase.auth();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const createProjectFn = window.firebase.functions().httpsCallable('createProject');
+      const result = await createProjectFn({ name: newProjectName });
+      
+      setProjects(prevProjects => [...prevProjects, result.data]);
+      setNewProjectName('');
+      onClose();
+    } catch (err) {
+      console.error('Error creating project:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create project';
+      setError(errorMessage);
+    }
+  };
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -26,35 +49,15 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
           throw new Error('User not authenticated');
         }
 
-        const token = await currentUser.getIdToken();
-        if (!token) {
-          throw new Error('Failed to get auth token');
-        }
-
-        const response = await fetch('/getSongVersions', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const getProjectsFn = window.firebase.functions().httpsCallable('getProjects');
+        const result = await getProjectsFn();
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        let result;
-        try {
-          result = await response.json();
-        } catch (parseError) {
-          console.error('Error parsing response:', parseError);
-          throw new Error('Failed to parse server response');
-        }
-
-        if (!result || !Array.isArray(result.songs)) {
+        if (!result.data || !Array.isArray(result.data.songs)) {
           throw new Error('Invalid response format');
         }
 
-        console.log('Projects loaded:', result);
-        setProjects(result.songs);
+        console.log('Projects loaded:', result.data);
+        setProjects(result.data.songs);
       } catch (err) {
         console.error('Error loading projects:', err);
         const errorMessage = err instanceof Error ? err.message : 'Failed to load projects';
@@ -92,7 +95,17 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
 
   return (
     <div className="project-section" id="projectSection">
-      <h1>Select a Project</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1>Select a Project</h1>
+        <Button 
+          color="primary" 
+          onPress={onOpen}
+          className="px-4"
+        >
+          Create New Project
+        </Button>
+      </div>
+
       <div className="project-list" id="projectList">
         {projects.length === 0 ? (
           <div className="no-projects">No projects available</div>
@@ -112,6 +125,32 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
           ))
         )}
       </div>
+
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalContent>
+          <ModalHeader>Create New Project</ModalHeader>
+          <ModalBody>
+            <Input
+              label="Project Name"
+              placeholder="Enter project name"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onClose}>
+              Cancel
+            </Button>
+            <Button 
+              color="primary" 
+              onPress={handleCreateProject}
+              isDisabled={!newProjectName.trim()}
+            >
+              Create
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };
