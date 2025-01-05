@@ -442,103 +442,96 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
-      <CardBody className="p-8">
-        <div className="flex flex-col gap-8">
-          {/* Back button */}
+      <CardBody className="flex flex-col gap-8 p-8">
+        {/* Back button */}
+        <Button
+          variant="light"
+          color="primary"
+          onPress={onBack}
+          className="w-fit"
+          startContent={<span>‹</span>}
+        >
+          Back to projects
+        </Button>
+
+        {/* Project title */}
+        <h1 className="text-4xl font-normal text-left text-foreground">
+          {project.name}
+        </h1>
+
+        {/* Player controls */}
+        <div className="flex items-center gap-6">
           <Button
-            variant="light"
             color="primary"
-            onPress={onBack}
-            className="w-fit"
-            startContent={<span>‹</span>}
+            onPress={togglePlayPause}
+            isDisabled={!selectedVersion}
+            size="lg"
+            isIconOnly
+            radius="full"
+            className="w-16 h-16 min-w-[64px] p-0"
           >
-            Back to projects
+            {isPlaying ? 
+              <PauseCircleIcon className="w-16 h-16 text-white" /> : 
+              <PlayCircleIcon className="w-16 h-16 text-white" />
+            }
           </Button>
 
-          {/* Project title */}
-          <h1 className="text-4xl font-normal text-left text-foreground">
-            {project.name}
-          </h1>
-
-          {/* Main player section */}
-          <div className="flex flex-col gap-12">
-            {/* Play button and progress section */}
-            <div className="flex items-center gap-6">
-              <Button
-                color="primary"
-                onPress={togglePlayPause}
-                isDisabled={!selectedVersion}
-                size="lg"
-                isIconOnly
-                radius="full"
-                className="w-16 h-16 min-w-[64px] p-0"
-              >
-                {isPlaying ? 
-                  <PauseCircleIcon className="w-16 h-16 text-white" /> : 
-                  <PlayCircleIcon className="w-16 h-16 text-white" />
-                }
-              </Button>
-
-              <div className="flex-1 flex flex-col gap-2">
-                {/* Time display */}
-                <div className="flex justify-between text-base">
-                  <span className="text-foreground-500">{formatTime(currentTime)}</span>
-                  <span className="text-foreground-500">{formatTime(duration)}</span>
-                </div>
-
-                {/* Progress Bar */}
-                <div 
-                  className="w-full h-2 bg-default-200 dark:bg-default-100 rounded-full cursor-pointer overflow-hidden"
-                  onClick={handleProgressClick}
-                >
-                  <div 
-                    className="h-full bg-primary transition-[width] duration-100"
-                    style={{ 
-                      width: `${(currentTime / duration) * 100 || 0}%`,
-                      transition: isPlaying ? 'none' : 'width 0.1s linear'
-                    }}
-                  />
-                </div>
-              </div>
+          <div className="flex-1 flex flex-col gap-2">
+            <div className="flex justify-between text-base">
+              <span className="text-foreground-500">{formatTime(currentTime)}</span>
+              <span className="text-foreground-500">{formatTime(duration)}</span>
             </div>
 
-            {/* Version selector */}
-            {project.versions.length > 0 && (
-              <Select
-                label="Version"
-                placeholder="Choose a version"
-                selectedKeys={[selectedVersion]}
-                className="max-w-full"
-                onChange={(e) => setSelectedVersion(e.target.value)}
-                variant="bordered"
-                size="lg"
-                radius="lg"
-              >
-                {project.versions.map((version) => (
-                  <SelectItem key={version.filename} value={version.filename}>
-                    {version.displayName}
-                  </SelectItem>
-                ))}
-              </Select>
-            )}
-          </div>
-
-          {error && (
-            <Chip
-              color="danger"
-              variant="flat"
-              className="w-full"
+            <div 
+              className="w-full h-2 bg-default-200 dark:bg-default-100 rounded-full cursor-pointer overflow-hidden"
+              onClick={handleProgressClick}
             >
-              {error}
-            </Chip>
-          )}
-
-          {loading && (
-            <div className="flex justify-center">
-              <Spinner color="primary" />
+              <div 
+                className="h-full bg-primary transition-[width] duration-100"
+                style={{ 
+                  width: `${(currentTime / duration) * 100 || 0}%`,
+                  transition: isPlaying ? 'none' : 'width 0.1s linear'
+                }}
+              />
             </div>
-          )}
+          </div>
         </div>
+
+        {/* Version selector */}
+        {project.versions.length > 0 && (
+          <Select
+            label="Version"
+            placeholder="Choose a version"
+            selectedKeys={[selectedVersion]}
+            className="max-w-full mt-4"
+            onChange={(e) => setSelectedVersion(e.target.value)}
+            variant="bordered"
+            size="lg"
+            radius="lg"
+          >
+            {project.versions.map((version) => (
+              <SelectItem key={version.filename} value={version.filename}>
+                {version.displayName}
+              </SelectItem>
+            ))}
+          </Select>
+        )}
+
+        {error && (
+          <Chip
+            color="danger"
+            variant="flat"
+            className="w-full"
+          >
+            {error}
+          </Chip>
+        )}
+
+        {loading && (
+          <div className="flex justify-center">
+            <Spinner color="primary" />
+          </div>
+        )}
       </CardBody>
     </Card>
   );
