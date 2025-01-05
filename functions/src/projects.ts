@@ -3,6 +3,7 @@ import {getStorage} from "firebase-admin/storage";
 import {getAuth} from "firebase-admin/auth";
 import * as logger from "firebase-functions/logger";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {isSupportedAudioFile, getDisplayName} from "./utils/audio";
 
 const db = getFirestore();
 const storage = getStorage();
@@ -227,10 +228,10 @@ export const getProjects = onCall(async (request) => {
 
       // Filter and process versions
       const versions = files
-        .filter((file) => !file.name.endsWith("/.keep") && file.name.endsWith(".mp3"))
+        .filter((file) => !file.name.endsWith("/.keep") && isSupportedAudioFile(file.name))
         .map((file) => {
           const filename = file.name.split("/").pop()!;
-          const displayName = filename.substring(filename.indexOf("_") + 1).replace(".mp3", "");
+          const displayName = getDisplayName(filename);
           return {filename, displayName};
         });
 
@@ -377,9 +378,9 @@ export const getProject = onCall(
       // Filter out .keep file and create version objects
       const filteredFiles = files.filter((file) => {
         const isKeepFile = file.name.endsWith("/.keep");
-        const isMP3 = file.name.endsWith(".mp3");
+        const isAudioFile = isSupportedAudioFile(file.name);
         const isInProject = file.name.startsWith(prefix);
-        return !isKeepFile && isMP3 && isInProject;
+        return !isKeepFile && isAudioFile && isInProject;
       });
 
       logger.debug("Files after filtering:", {
@@ -390,7 +391,7 @@ export const getProject = onCall(
 
       const versions = filteredFiles.map((file) => {
         const filename = file.name.split("/").pop()!;
-        const displayName = filename.substring(filename.indexOf("_") + 1).replace(".mp3", "");
+        const displayName = getDisplayName(filename);
         return {filename, displayName};
       });
 

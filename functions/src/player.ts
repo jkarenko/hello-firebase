@@ -3,6 +3,7 @@ import * as logger from "firebase-functions/logger";
 import {getStorage} from "firebase-admin/storage";
 import {verifyToken} from "./auth";
 import {getUserProjects, hasProjectAccess, getProjectAccess} from "./projects";
+import {isSupportedAudioFile, getDisplayName} from "./utils/audio";
 
 const storage = getStorage();
 const bucket = storage.bucket();
@@ -65,15 +66,15 @@ export const getSongVersions = onRequest(
       logger.debug(`Found ${files.length} files in storage`);
 
       for (const file of files) {
-        // Skip non-mp3 files
-        if (!file.name.endsWith(".mp3")) {
+        // Skip non-audio files
+        if (!isSupportedAudioFile(file.name)) {
           continue;
         }
 
         // Get the project name and filename
         const parts = file.name.split("/");
         if (parts.length !== 3) {
-          // Skip if not in format audio/project/file.mp3
+          // Skip if not in format audio/project/file.ext
           continue;
         }
 
@@ -111,7 +112,7 @@ export const getSongVersions = onRequest(
 
         projectVersions.get(projectId)!.push({
           id: metadata.metadata?.id || filename,
-          displayName: metadata.metadata?.displayName || filename.replace(/^[^_]*_/, "").replace(".mp3", ""),
+          displayName: metadata.metadata?.displayName || getDisplayName(filename),
           filename: filename,
         });
       }
