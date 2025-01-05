@@ -1,5 +1,6 @@
 import type { Auth } from 'firebase/auth';
 import { User, GoogleAuthProvider, signInWithRedirect, signOut } from 'firebase/auth';
+import { useEffect } from 'react';
 
 interface AuthProps {
   user: User | null;
@@ -10,9 +11,32 @@ interface AuthProps {
 const Auth = ({ user, auth, provider }: AuthProps) => {
   console.log('Auth component render:', { user });
 
-  const handleLogin = async () => {
+  useEffect(() => {
+    // Check if we were redirected and should auto-login
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('triggerAuth') === 'true' && !user) {
+      // Remove the parameter to prevent loops
+      urlParams.delete('triggerAuth');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+      // Trigger login
+      handleLogin(false);
+    }
+  }, []);
+
+  const handleLogin = async (checkDomain = true) => {
     try {
       console.log('Starting sign in with redirect');
+      
+      // Check if we're on .web.app domain and redirect to .firebaseapp.com if needed
+      if (checkDomain && window.location.hostname.includes('.web.app')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('triggerAuth', 'true');
+        const newUrl = window.location.href.replace('.web.app', '.firebaseapp.com');
+        console.log('Redirecting to firebaseapp.com domain for auth');
+        window.location.href = newUrl + (newUrl.includes('?') ? '&' : '?') + urlParams.toString();
+        return;
+      }
       
       // Configure provider with specific settings
       provider.addScope('email');
@@ -48,7 +72,7 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
   return (
     <div className="auth-section">
       {!user ? (
-        <button onClick={handleLogin} className="auth-button">
+        <button onClick={() => handleLogin(true)} className="auth-button">
           Sign in with Google
         </button>
       ) : (
