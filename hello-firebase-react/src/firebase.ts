@@ -59,30 +59,43 @@ export function initializeFirebase() {
 
 // Simplified getters that use the initialized flag
 export function getFirebaseApp() {
-  if (!initialized) throw new Error("Firebase not initialized");
+  if (!initialized) {
+    throw new Error("Firebase not initialized");
+  }
   return app;
 }
 
 export function getFirebaseAuth() {
-  if (!initialized) throw new Error("Firebase not initialized");
+  if (!initialized) {
+    throw new Error("Firebase not initialized");
+  }
   return auth;
 }
 
 export function getFirebaseFunctions() {
-  if (!initialized) throw new Error("Firebase not initialized");
+  if (!initialized) {
+    throw new Error("Firebase not initialized");
+  }
   return functions;
 }
 
 export function getFirebaseFirestore() {
-  if (!initialized) throw new Error("Firebase not initialized");
+  if (!initialized) {
+    throw new Error("Firebase not initialized");
+  }
   return firestore;
 }
 
 export function getFirebaseAnalytics() {
+  if (!initialized) {
+    throw new Error("Firebase not initialized");
+  }
   return analytics;
 }
 
 export function getFirebaseStorage() {
-  if (!initialized) throw new Error("Firebase not initialized");
+  if (!initialized) {
+    throw new Error("Firebase not initialized");
+  }
   return storage;
 }
