@@ -15,6 +15,7 @@
     }
   ],
   "hosting": {
+    "site": "jkarenko-hello-firebase",
     "public": "hello-firebase-react/dist",
     "ignore": [
       "firebase.json",
@@ -40,13 +41,24 @@
     "rules": "storage.rules"
   },
   "emulators": {
-    "auth": {},
-    "functions": {},
-    "hosting": {},
-    "storage": {},
-    "firestore": {},
+    "auth": {
+      "port": 9099
+    },
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "storage": {
+      "port": 9199
+    },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "port": 4000
     }
   }
 }

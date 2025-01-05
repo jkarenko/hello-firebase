@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner } from "@nextui-org/react";
 import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
 import { AudioCache } from '../utils/AudioCache';
+import FileUpload from './FileUpload';
+import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
 
 interface Version {
   filename: string;
@@ -17,6 +20,12 @@ interface Project {
 interface AudioPlayerProps {
   projectId: string;
   onBack: () => void;
+}
+
+interface GetProjectResponse {
+  id: string;
+  name: string;
+  versions: Version[];
 }
 
 const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
@@ -82,34 +91,20 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   useEffect(() => {
     const loadProject = async () => {
       try {
-        const {currentUser} = window.firebase.auth();
-        if (!currentUser) {
+        const auth = getFirebaseAuth();
+        if (!auth.currentUser) {
           throw new Error('User not authenticated');
         }
 
-        const token = await currentUser.getIdToken();
-        const response = await fetch('/getSongVersions', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        const currentProject = result.songs.find((s: Project) => s.id === projectId);
+        const functions = getFirebaseFunctions();
+        const getProjectFn = httpsCallable<{projectId: string}, GetProjectResponse>(functions, 'getProject');
+        const result = await getProjectFn({ projectId });
         
-        if (!currentProject) {
-          throw new Error('Project not found');
+        setProject(result.data);
+        if (result.data.versions.length > 0) {
+          setSelectedVersion(result.data.versions[0].filename);
         }
-
-        setProject(currentProject);
-        if (currentProject.versions.length > 0) {
-          setSelectedVersion(currentProject.versions[0].filename);
-        }
-        await preCacheVersions(currentProject.versions);
+        await preCacheVersions(result.data.versions);
       } catch (err) {
         console.error('Error loading project:', err);
         setError('Failed to load project. Please try again.');
@@ -136,12 +131,12 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
       }
 
       // Get audio URL from Firebase function
-      const {currentUser} = window.firebase.auth();
-      if (!currentUser) {
+      const auth = getFirebaseAuth();
+      if (!auth.currentUser) {
         throw new Error('User not authenticated');
       }
 
-      const token = await currentUser.getIdToken();
+      const token = await auth.currentUser.getIdToken();
       const response = await fetch(`/getAudioUrl?filename=${encodeURIComponent(filename)}&projectId=${encodeURIComponent(projectId)}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -360,6 +355,29 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     };
   }, []);
 
+  const handleUploadComplete = useCallback(async () => {
+    // Reload project data to get new versions
+    try {
+      const auth = getFirebaseAuth();
+      if (!auth.currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const functions = getFirebaseFunctions();
+      const getProjectFn = httpsCallable<{projectId: string}, GetProjectResponse>(functions, 'getProject');
+      const result = await getProjectFn({ projectId });
+      
+      setProject(result.data);
+      if (result.data.versions.length > 0) {
+        setSelectedVersion(result.data.versions[0].filename);
+      }
+      await preCacheVersions(result.data.versions);
+    } catch (err) {
+      console.error('Error reloading project:', err);
+      setError('Failed to reload project data. Please refresh the page.');
+    }
+  }, [projectId, preCacheVersions]);
+
   if (loading) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
@@ -459,6 +477,22 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           {project.name}
         </h1>
 
+        {/* Version selector */}
+        {project.versions.length > 0 && (
+          <Select
+            label="Version"
+            placeholder="Select a version"
+            selectedKeys={selectedVersion ? [selectedVersion] : []}
+            onChange={(e) => setSelectedVersion(e.target.value)}
+          >
+            {project.versions.map((version) => (
+              <SelectItem key={version.filename} value={version.filename}>
+                {version.displayName}
+              </SelectItem>
+            ))}
+          </Select>
+        )}
+
         {/* Player controls */}
         <div className="flex items-center gap-6">
           <Button
@@ -497,25 +531,8 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           </div>
         </div>
 
-        {/* Version selector */}
-        {project.versions.length > 0 && (
-          <Select
-            label="Version"
-            placeholder="Choose a version"
-            selectedKeys={[selectedVersion]}
-            className="max-w-full mt-4"
-            onChange={(e) => setSelectedVersion(e.target.value)}
-            variant="bordered"
-            size="lg"
-            radius="lg"
-          >
-            {project.versions.map((version) => (
-              <SelectItem key={version.filename} value={version.filename}>
-                {version.displayName}
-              </SelectItem>
-            ))}
-          </Select>
-        )}
+        {/* File Upload */}
+        <FileUpload projectId={projectId} onUploadComplete={handleUploadComplete} />
 
         {error && (
           <Chip
