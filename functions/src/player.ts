@@ -3,7 +3,7 @@ import * as logger from "firebase-functions/logger";
 import {getStorage} from "firebase-admin/storage";
 import {verifyToken} from "./auth";
 import {getUserProjects, hasProjectAccess, getProjectAccess} from "./projects";
-import {isSupportedAudioFile, getDisplayName} from "./utils/audio";
+import {isSupportedAudioFile, getDisplayName} from "../../shared/audio";
 
 const storage = getStorage();
 const bucket = storage.bucket();

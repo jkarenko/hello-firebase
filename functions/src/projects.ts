@@ -3,7 +3,7 @@ import {getStorage} from "firebase-admin/storage";
 import {getAuth} from "firebase-admin/auth";
 import * as logger from "firebase-functions/logger";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
-import {isSupportedAudioFile, getDisplayName} from "./utils/audio";
+import {isSupportedAudioFile, getDisplayName} from "../../shared/audio";
 
 const db = getFirestore();
 const storage = getStorage();

@@ -3,6 +3,7 @@ import { Button, Progress } from "@nextui-org/react";
 import { CloudArrowUpIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { getFirebaseStorage } from '../firebase';
 import { ref, uploadBytesResumable } from 'firebase/storage';
+import { SUPPORTED_AUDIO_FORMATS, isSupportedAudioFile, SupportedAudioFormat } from '../../../shared/audio';
 
 interface FileUploadProps {
   projectId: string;
@@ -15,6 +16,11 @@ const FileUpload = ({ projectId, onUploadComplete }: FileUploadProps) => {
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Format the supported formats for display
+  const supportedFormatsDisplay = SUPPORTED_AUDIO_FORMATS
+    .map((format: SupportedAudioFormat) => format.replace('.', '').toUpperCase())
+    .join(', ');
 
   // Reset success state after 3 seconds
   useEffect(() => {
@@ -44,9 +50,9 @@ const FileUpload = ({ projectId, onUploadComplete }: FileUploadProps) => {
       setUploadProgress(0);
       setShowSuccess(false);
 
-      // Validate file type
-      if (!file.type.startsWith('audio/')) {
-        throw new Error('Please upload an audio file');
+      // Validate file type using our shared utility
+      if (!isSupportedAudioFile(file.name)) {
+        throw new Error(`Unsupported file format. Please upload ${supportedFormatsDisplay} files only.`);
       }
 
       // Generate a unique filename
@@ -120,7 +126,7 @@ const FileUpload = ({ projectId, onUploadComplete }: FileUploadProps) => {
           type="file"
           ref={fileInputRef}
           onChange={handleFileSelect}
-          accept="audio/*"
+          accept={SUPPORTED_AUDIO_FORMATS.map((format: SupportedAudioFormat) => `audio/${format.replace('.', '')}`).join(',')}
           className="hidden"
         />
 
@@ -135,9 +141,14 @@ const FileUpload = ({ projectId, onUploadComplete }: FileUploadProps) => {
             {showSuccess ? 'Upload successful!' : 'Drag and drop your audio file here'}
           </p>
           {!showSuccess && (
-            <p className="text-sm text-gray-500">
-              or
-            </p>
+            <>
+              <p className="text-sm text-gray-500 mb-1">
+                or
+              </p>
+              <p className="text-xs text-gray-400 mb-2">
+                Supported formats: {supportedFormatsDisplay}
+              </p>
+            </>
           )}
         </div>
 
