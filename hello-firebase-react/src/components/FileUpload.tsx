@@ -3,7 +3,7 @@ import { Button, Progress } from "@nextui-org/react";
 import { CloudArrowUpIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { getFirebaseStorage } from '../firebase';
 import { ref, uploadBytesResumable } from 'firebase/storage';
-import { SUPPORTED_AUDIO_FORMATS, isSupportedAudioFile, SupportedAudioFormat } from '../../../shared/audio';
+import { SUPPORTED_AUDIO_FORMATS, isSupportedAudioFile, SupportedAudioFormat } from '../utils/audio';
 
 interface FileUploadProps {
   projectId: string;

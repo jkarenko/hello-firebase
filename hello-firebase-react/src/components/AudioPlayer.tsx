@@ -6,7 +6,7 @@ import FileUpload from './FileUpload';
 import ShareProject from './ShareProject';
 import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
-import { getDisplayName } from '../../../shared/audio';
+import { getDisplayName } from '../utils/audio';
 
 interface Version {
   filename: string;

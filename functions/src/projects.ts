@@ -3,7 +3,7 @@ import {getStorage} from "firebase-admin/storage";
 import {getAuth} from "firebase-admin/auth";
 import * as logger from "firebase-functions/logger";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
-import {isSupportedAudioFile, getDisplayName} from "../../shared/audio";
+import {isSupportedAudioFile, getDisplayName} from "./utils/audio";
 
 const db = getFirestore();
 const storage = getStorage();
@@ -514,3 +514,132 @@ export const addCollaborator = onCall(async (request) => {
     throw new HttpsError("internal", "Failed to add collaborator");
   }
 });
+
+export const getCollaborators = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId} = request.data;
+      if (!projectId) {
+        throw new HttpsError("invalid-argument", "Project ID is required");
+      }
+
+      // Check if user has access to the project
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      // Check if user has access to this project
+      const hasAccess = await hasProjectAccess(request.auth.uid, projectId);
+      if (!hasAccess) {
+        throw new HttpsError("permission-denied", "You don't have access to this project");
+      }
+
+      // Get collaborator emails
+      const collaboratorPromises = Object.entries(projectAccess.collaborators || {}).map(async ([uid, data]) => {
+        try {
+          const user = await getAuth().getUser(uid);
+          return {
+            email: user.email || "",
+            isEditor: data.role === "editor",
+          };
+        } catch (error) {
+          logger.error("Error getting user info:", error);
+          return null;
+        }
+      });
+
+      return (await Promise.all(collaboratorPromises))
+              .filter((c): c is NonNullable<typeof c> => c !== null)
+              .sort((a, b) => a.email.localeCompare(b.email));
+    } catch (error) {
+      logger.error("Error getting collaborators:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to get collaborators");
+    }
+  }
+);
+
+export const updateCollaborator = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId, email, isEditor} = request.data;
+      if (!projectId || !email || typeof isEditor !== "boolean") {
+        throw new HttpsError("invalid-argument", "Project ID, email, and isEditor status are required");
+      }
+
+      // Check if user has access to the project
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      // Check if user is the owner
+      if (projectAccess.owner !== request.auth.uid) {
+        throw new HttpsError("permission-denied", "Only the project owner can update collaborator permissions");
+      }
+
+      // Get user by email
+      try {
+        const userRecord = await getAuth().getUserByEmail(email);
+
+        // Don't allow modifying the owner's role
+        if (userRecord.uid === projectAccess.owner) {
+          throw new HttpsError("invalid-argument", "Cannot modify project owner's role");
+        }
+
+        // Check if user is actually a collaborator
+        if (!projectAccess.collaborators?.[userRecord.uid]) {
+          throw new HttpsError("not-found", "User is not a collaborator on this project");
+        }
+
+        // Update collaborator role
+        await addProjectCollaborator(projectId, userRecord.uid, isEditor ? "editor" : "reader");
+
+        logger.info("Updated collaborator role", {
+          projectId,
+          collaboratorUid: userRecord.uid,
+          collaboratorEmail: email,
+          newRole: isEditor ? "editor" : "reader",
+          updatedBy: request.auth.uid,
+        });
+
+        return {success: true};
+      } catch (error) {
+        if (error instanceof HttpsError) {
+          throw error;
+        }
+        logger.error("Error updating collaborator:", error);
+        throw new HttpsError("not-found", "User not found");
+      }
+    } catch (error) {
+      logger.error("Error in updateCollaborator:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to update collaborator");
+    }
+  }
+);
