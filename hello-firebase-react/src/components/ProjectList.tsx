@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@nextui-org/react";
+import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
 
 interface Project {
   id: string;
@@ -14,6 +16,16 @@ interface ProjectListProps {
   onProjectSelect: (projectId: string) => void;
 }
 
+interface CreateProjectResponse {
+  id: string;
+  name: string;
+  versions: [];
+}
+
+interface GetProjectsResponse {
+  songs: Project[];
+}
+
 const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,12 +35,13 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
 
   const handleCreateProject = async () => {
     try {
-      const {currentUser} = window.firebase.auth();
-      if (!currentUser) {
+      const auth = getFirebaseAuth();
+      if (!auth.currentUser) {
         throw new Error('User not authenticated');
       }
 
-      const createProjectFn = window.firebase.functions().httpsCallable('createProject');
+      const functions = getFirebaseFunctions();
+      const createProjectFn = httpsCallable<{name: string}, CreateProjectResponse>(functions, 'createProject');
       const result = await createProjectFn({ name: newProjectName });
       
       setProjects(prevProjects => [...prevProjects, result.data]);
@@ -44,12 +57,13 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const {currentUser} = window.firebase.auth();
-        if (!currentUser) {
+        const auth = getFirebaseAuth();
+        if (!auth.currentUser) {
           throw new Error('User not authenticated');
         }
 
-        const getProjectsFn = window.firebase.functions().httpsCallable('getProjects');
+        const functions = getFirebaseFunctions();
+        const getProjectsFn = httpsCallable<void, GetProjectsResponse>(functions, 'getProjects');
         const result = await getProjectsFn();
         
         if (!result.data || !Array.isArray(result.data.songs)) {
@@ -63,7 +77,8 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load projects';
         setError(errorMessage);
         if (err instanceof Error && err.message.includes('401')) {
-          await window.firebase.auth().signOut();
+          const auth = getFirebaseAuth();
+          await auth.signOut();
         }
       } finally {
         setLoading(false);

@@ -3,6 +3,8 @@ import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner } from "@next
 import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
 import { AudioCache } from '../utils/AudioCache';
 import FileUpload from './FileUpload';
+import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
 
 interface Version {
   filename: string;
@@ -18,6 +20,12 @@ interface Project {
 interface AudioPlayerProps {
   projectId: string;
   onBack: () => void;
+}
+
+interface GetProjectResponse {
+  id: string;
+  name: string;
+  versions: Version[];
 }
 
 const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
@@ -83,12 +91,13 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   useEffect(() => {
     const loadProject = async () => {
       try {
-        const {currentUser} = window.firebase.auth();
-        if (!currentUser) {
+        const auth = getFirebaseAuth();
+        if (!auth.currentUser) {
           throw new Error('User not authenticated');
         }
 
-        const getProjectFn = window.firebase.functions().httpsCallable('getProject');
+        const functions = getFirebaseFunctions();
+        const getProjectFn = httpsCallable<{projectId: string}, GetProjectResponse>(functions, 'getProject');
         const result = await getProjectFn({ projectId });
         
         setProject(result.data);
@@ -122,12 +131,12 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
       }
 
       // Get audio URL from Firebase function
-      const {currentUser} = window.firebase.auth();
-      if (!currentUser) {
+      const auth = getFirebaseAuth();
+      if (!auth.currentUser) {
         throw new Error('User not authenticated');
       }
 
-      const token = await currentUser.getIdToken();
+      const token = await auth.currentUser.getIdToken();
       const response = await fetch(`/getAudioUrl?filename=${encodeURIComponent(filename)}&projectId=${encodeURIComponent(projectId)}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -349,12 +358,13 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   const handleUploadComplete = useCallback(async () => {
     // Reload project data to get new versions
     try {
-      const {currentUser} = window.firebase.auth();
-      if (!currentUser) {
+      const auth = getFirebaseAuth();
+      if (!auth.currentUser) {
         throw new Error('User not authenticated');
       }
 
-      const getProjectFn = window.firebase.functions().httpsCallable('getProject');
+      const functions = getFirebaseFunctions();
+      const getProjectFn = httpsCallable<{projectId: string}, GetProjectResponse>(functions, 'getProject');
       const result = await getProjectFn({ projectId });
       
       setProject(result.data);

@@ -1,9 +1,10 @@
-import * as firebaseAuth from 'firebase/auth';
+import type { Auth } from 'firebase/auth';
+import { User, GoogleAuthProvider, signInWithRedirect, signOut } from 'firebase/auth';
 
 interface AuthProps {
-  user: firebaseAuth.User | null;
-  auth: firebaseAuth.Auth;
-  provider: firebaseAuth.GoogleAuthProvider;
+  user: User | null;
+  auth: Auth;
+  provider: GoogleAuthProvider;
 }
 
 const Auth = ({ user, auth, provider }: AuthProps) => {
@@ -15,16 +16,12 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
       console.log('Current auth instance:', auth);
       console.log('Current provider:', provider);
       
-      // Check if we're connected to emulator
-      const authSettings = auth.settings || {};
-      console.log('Auth settings:', authSettings);
-
       // Configure provider
       provider.setCustomParameters({
         prompt: 'select_account'
       });
       
-      await auth.signInWithRedirect(provider);
+      await signInWithRedirect(auth, provider);
       console.log('Redirect initiated');
     } catch (error) {
       console.error('Login error:', error);
@@ -35,7 +32,7 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
   const handleLogout = async () => {
     try {
       console.log('Starting sign out');
-      await auth.signOut();
+      await signOut(auth);
       console.log('Sign out complete');
     } catch (error) {
       console.error('Logout error:', error);

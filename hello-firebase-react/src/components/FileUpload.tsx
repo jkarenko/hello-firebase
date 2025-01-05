@@ -1,10 +1,15 @@
 import { useState, useRef, DragEvent } from 'react';
 import { Button, Progress } from "@nextui-org/react";
 import { CloudArrowUpIcon } from '@heroicons/react/24/outline';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface FileUploadProps {
   projectId: string;
   onUploadComplete: () => void;
+}
+
+interface UploadUrlResponse {
+  signedUrl: string;
 }
 
 const FileUpload = ({ projectId, onUploadComplete }: FileUploadProps) => {
@@ -38,8 +43,9 @@ const FileUpload = ({ projectId, onUploadComplete }: FileUploadProps) => {
       const filename = `${timestamp}_${file.name}`;
 
       // Get signed URL for upload
-      const getUploadUrlFn = window.firebase.functions().httpsCallable('getUploadUrl');
-      const { data: { signedUrl } } = await getUploadUrlFn({ projectId, filename });
+      const functions = getFunctions();
+      const getUploadUrl = httpsCallable<{ projectId: string, filename: string }, UploadUrlResponse>(functions, 'getUploadUrl');
+      const { data: { signedUrl } } = await getUploadUrl({ projectId, filename });
 
       // Upload the file with progress tracking
       const xhr = new XMLHttpRequest();
