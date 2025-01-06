@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@nextui-org/react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure, Divider } from "@nextui-org/react";
 import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 
@@ -10,6 +10,8 @@ interface Project {
     filename: string;
     displayName: string;
   }>;
+  owner: string;
+  isCollaborator: boolean;
 }
 
 interface ProjectListProps {
@@ -20,6 +22,8 @@ interface CreateProjectResponse {
   id: string;
   name: string;
   versions: [];
+  owner: string;
+  isCollaborator: boolean;
 }
 
 interface GetProjectsResponse {
@@ -115,8 +119,8 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
 
   return (
     <div className="project-section" id="projectSection">
-      <div className="flex justify-between items-center mb-6">
-        <h1>Select a Project</h1>
+      <div className="flex justify-between mb-6 ">
+        <h1 className="text-2xl m-0">Your Projects</h1>
         <Button 
           color="primary" 
           onPress={onOpen}
@@ -126,24 +130,62 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
         </Button>
       </div>
 
-      <div className="project-list" id="projectList">
-        {projects.length === 0 ? (
-          <div className="no-projects">No projects available</div>
-        ) : (
-          projects.map((project) => (
-            <div
-              key={project.id}
-              className="project-card"
-              onClick={() => onProjectSelect(project.id)}
-            >
-              <h2>{project.name}</h2>
-              <p>
-                {project.versions.length} version
-                {project.versions.length === 1 ? '' : 's'}
-              </p>
-            </div>
-          ))
-        )}
+      <div className="space-y-2">
+        <div>
+          <div className="project-list" id="projectList">
+            {projects.filter(p => !p.isCollaborator).length === 0 ? (
+              <div className="no-projects">No projects available</div>
+            ) : (
+              projects
+                .filter(p => !p.isCollaborator)
+                .map((project) => (
+                  <div
+                    key={project.id}
+                    className="project-card"
+                    onClick={() => onProjectSelect(project.id)}
+                  >
+                    <h2>{project.name}</h2>
+                    <p>
+                      {project.versions.length} version
+                      {project.versions.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Divider></Divider>
+
+      <div className="flex justify-between mb-6">
+        <h1 className="text-2xl m-0">Projects Shared With Me</h1>
+      </div>
+      
+      <div className="space-y-8">
+        <div>
+          <div className="project-list">
+            {projects.filter(p => p.isCollaborator).length === 0 ? (
+              <div className="no-projects">No shared projects</div>
+            ) : (
+              projects
+                .filter(p => p.isCollaborator)
+                .map((project) => (
+                  <div
+                    key={project.id}
+                    className="project-card"
+                    onClick={() => onProjectSelect(project.id)}
+                  >
+                    <h2>{project.name}</h2>
+                    <p>
+                      {project.versions.length} version
+                      {project.versions.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
       </div>
 
       <Modal isOpen={isOpen} onClose={onClose}>

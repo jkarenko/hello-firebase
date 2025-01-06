@@ -245,6 +245,8 @@ export const getProjects = onCall(async (request) => {
         id: projectAccess.projectId,
         name: projectAccess.projectName,
         versions,
+        owner: projectAccess.owner,
+        isCollaborator: request.auth ? projectAccess.owner !== request.auth.uid : false,
       };
     });
 

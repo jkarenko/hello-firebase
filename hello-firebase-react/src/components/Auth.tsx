@@ -1,5 +1,6 @@
 import type { Auth } from 'firebase/auth';
 import { User, GoogleAuthProvider, signInWithRedirect, signOut } from 'firebase/auth';
+import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/react";
 import { useEffect } from 'react';
 
 interface AuthProps {
@@ -70,18 +71,30 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
   };
 
   return (
-    <div className="auth-section">
+    <div className="auth-section flex justify-end items-center">
       {!user ? (
         <button onClick={() => handleLogin(true)} className="auth-button">
           Sign in with Google
         </button>
       ) : (
-        <>
-          <button onClick={handleLogout} className="auth-button" id="logoutBtn">
-            Sign out
-          </button>
-          <span className="user-email">{user.email}</span>
-        </>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-default-600">{user.email}</span>
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Avatar 
+                name={user.email || ''} 
+                showFallback
+                size="md"
+                className="cursor-pointer"
+              />
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Profile Actions" variant="flat">
+              <DropdownItem key="logout" className="text-danger" color="danger" onClick={handleLogout}>
+                Log Out
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        </div>
       )}
     </div>
   );
