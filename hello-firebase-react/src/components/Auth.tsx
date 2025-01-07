@@ -3,6 +3,7 @@ import { User, GoogleAuthProvider, signInWithRedirect, signOut } from 'firebase/
 import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/react";
 import { useEffect } from 'react';
 import PendingInvites from './PendingInvites';
+import { eventEmitter, PROJECTS_UPDATED } from '../utils/events';
 
 interface AuthProps {
   user: User | null;
@@ -12,6 +13,11 @@ interface AuthProps {
 
 const Auth = ({ user, auth, provider }: AuthProps) => {
   console.log('Auth component render:', { user });
+
+  // Function to refresh projects by emitting an event
+  const refreshProjects = () => {
+    eventEmitter.emit(PROJECTS_UPDATED);
+  };
 
   useEffect(() => {
     // Check if we were redirected and should auto-login
@@ -79,7 +85,7 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
         </button>
       ) : (
         <div className="flex items-center gap-4">
-          <PendingInvites />
+          <PendingInvites onInviteAccepted={refreshProjects} />
           <span className="text-sm text-default-600">{user.email}</span>
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
@@ -100,6 +106,6 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
       )}
     </div>
   );
-};
+}
 
 export default Auth; 

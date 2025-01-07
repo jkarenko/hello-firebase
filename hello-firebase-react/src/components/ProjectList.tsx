@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure, Divider } from "@nextui-org/react";
 import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
+import { eventEmitter, PROJECTS_UPDATED } from '../utils/events';
 
 interface Project {
   id: string;
@@ -36,6 +37,50 @@ const ProjectList = () => {
   const [newProjectName, setNewProjectName] = useState('');
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  const loadProjects = useCallback(async () => {
+    try {
+      setLoading(true);
+      const auth = getFirebaseAuth();
+      if (!auth.currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const functions = getFirebaseFunctions();
+      const getProjectsFn = httpsCallable<void, GetProjectsResponse>(functions, 'getProjects');
+      const result = await getProjectsFn();
+      
+      if (!result.data || !Array.isArray(result.data.songs)) {
+        throw new Error('Invalid response format');
+      }
+
+      console.log('Projects loaded:', result.data);
+      setProjects(result.data.songs);
+    } catch (err) {
+      console.error('Error loading projects:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load projects';
+      setError(errorMessage);
+      if (err instanceof Error && err.message.includes('401')) {
+        const auth = getFirebaseAuth();
+        await auth.signOut();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
+  // Listen for project updates
+  useEffect(() => {
+    eventEmitter.on(PROJECTS_UPDATED, loadProjects);
+    return () => {
+      eventEmitter.off(PROJECTS_UPDATED, loadProjects);
+    };
+  }, [loadProjects]);
+
   const handleCreateProject = async () => {
     try {
       const auth = getFirebaseAuth();
@@ -62,40 +107,6 @@ const ProjectList = () => {
     }
   };
 
-  useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        const auth = getFirebaseAuth();
-        if (!auth.currentUser) {
-          throw new Error('User not authenticated');
-        }
-
-        const functions = getFirebaseFunctions();
-        const getProjectsFn = httpsCallable<void, GetProjectsResponse>(functions, 'getProjects');
-        const result = await getProjectsFn();
-        
-        if (!result.data || !Array.isArray(result.data.songs)) {
-          throw new Error('Invalid response format');
-        }
-
-        console.log('Projects loaded:', result.data);
-        setProjects(result.data.songs);
-      } catch (err) {
-        console.error('Error loading projects:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load projects';
-        setError(errorMessage);
-        if (err instanceof Error && err.message.includes('401')) {
-          const auth = getFirebaseAuth();
-          await auth.signOut();
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProjects();
-  }, []);
-
   if (loading) {
     return (
       <div className="project-section">
@@ -118,7 +129,7 @@ const ProjectList = () => {
 
   return (
     <div className="project-section" id="projectSection">
-      <div className="flex justify-between mb-6 ">
+      <div className="flex justify-between mb-6 items-center">
         <h1 className="text-2xl m-0">Your Projects</h1>
         <Button 
           color="primary" 

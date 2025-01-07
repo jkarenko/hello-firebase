@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { NextUIProvider } from '@nextui-org/react';
+import { Toaster } from 'sonner';
 import './index.css';
 import App from './App';
 import { initializeFirebase } from './firebase';
@@ -19,6 +20,7 @@ if (isDevelopment) {
     <BrowserRouter>
       <NextUIProvider>
         <App />
+        <Toaster richColors closeButton position="top-right" />
       </NextUIProvider>
     </BrowserRouter>
   );
@@ -28,6 +30,7 @@ if (isDevelopment) {
       <BrowserRouter>
         <NextUIProvider>
           <App />
+          <Toaster richColors closeButton position="top-right" />
         </NextUIProvider>
       </BrowserRouter>
     </React.StrictMode>

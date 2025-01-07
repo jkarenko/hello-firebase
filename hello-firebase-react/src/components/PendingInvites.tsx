@@ -3,6 +3,7 @@ import { Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure, Bad
 import { InboxIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
+import { toast } from 'sonner';
 
 interface Project {
   id: string;
@@ -17,7 +18,11 @@ interface GetProjectsResponse {
   songs: Project[];
 }
 
-const PendingInvites = () => {
+interface PendingInvitesProps {
+  onInviteAccepted?: () => void;
+}
+
+const PendingInvites = ({ onInviteAccepted }: PendingInvitesProps) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [pendingProjects, setPendingProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,14 +59,24 @@ const PendingInvites = () => {
       await respondToInviteFn({ projectId, accept });
       
       // Remove the project from the list
+      const project = pendingProjects.find(p => p.id === projectId);
       setPendingProjects(prev => prev.filter(p => p.id !== projectId));
       
-      // If no more pending invites, close the modal
-      if (pendingProjects.length === 1) {
-        onClose();
+      // Show toast for accepted invitation
+      if (accept && project) {
+        toast.success("Invitation accepted!", {
+          description: `Project: ${project.name}`,
+          duration: 3000,
+        });
+        // Trigger projects list refresh
+        onInviteAccepted?.();
       }
     } catch (error) {
       console.error('Error responding to invite:', error);
+      toast.error("Failed to respond to invitation", {
+        description: error instanceof Error ? error.message : "An error occurred",
+        duration: 3000,
+      });
     } finally {
       setActionLoading(null);
     }
@@ -81,10 +96,13 @@ const PendingInvites = () => {
           {pendingProjects.length > 0 && (
             <Badge
               color="danger"
-              size="sm"
-              className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2"
+              content={pendingProjects.length}
+              placement="top-right"
+              shape="rectangle"
+              size="md"
+              variant="solid"
             >
-              {pendingProjects.length}
+
             </Badge>
           )}
         </Button>
