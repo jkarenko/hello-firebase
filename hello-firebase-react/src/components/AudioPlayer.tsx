@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner } from "@nextui-org/react";
 import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
 import { AudioCache } from '../utils/AudioCache';
@@ -380,6 +380,12 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     }
   }, [projectId, preCacheVersions]);
 
+  // Memoize ShareProject props
+  const shareProjectProps = useMemo(() => ({
+    projectId,
+    projectName: project?.name || ''
+  }), [projectId, project?.name]);
+
   if (loading) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
@@ -475,7 +481,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
             Back to projects
           </Button>
           {project && (
-            <ShareProject projectId={projectId} projectName={project.name} />
+            <ShareProject {...shareProjectProps} />
           )}
         </div>
 

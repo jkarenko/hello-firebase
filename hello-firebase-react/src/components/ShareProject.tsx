@@ -5,6 +5,7 @@ import { getFirebaseFunctions, getAuth } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
+import React from 'react';
 
 interface Collaborator {
   email: string;
@@ -364,4 +365,4 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
   );
 };
 
-export default ShareProject; 
+export default React.memo(ShareProject); 
