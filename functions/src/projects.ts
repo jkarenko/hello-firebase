@@ -14,7 +14,7 @@ export interface ProjectAccess {
   owner: string;
   collaborators: {
     [uid: string]: {
-      role: "reader" | "editor";
+      role: "reader" | "editor" | "pending";
       addedAt: Timestamp;
     };
   };
@@ -95,7 +95,7 @@ export async function createProjectAccess(projectId: string, ownerUid: string, p
 export async function addProjectCollaborator(
   projectId: string,
   collaboratorUid: string,
-  role: "reader" | "editor" = "reader"
+  role: "reader" | "editor" | "pending" = "pending"
 ): Promise<void> {
   try {
     const now = Timestamp.now();
@@ -562,7 +562,7 @@ export const addCollaborator = onCall(async (request) => {
         throw new HttpsError("invalid-argument", "Cannot add project owner as a collaborator");
       }
 
-      // Add collaborator with reader role
+      // Add collaborator with pending role
       await addProjectCollaborator(projectId, userRecord.uid);
 
       logger.info("Added collaborator to project", {
@@ -570,6 +570,7 @@ export const addCollaborator = onCall(async (request) => {
         collaboratorUid: userRecord.uid,
         collaboratorEmail: email,
         addedBy: request.auth.uid,
+        role: "pending",
       });
     } catch (error) {
       if (error instanceof HttpsError) {
@@ -637,6 +638,7 @@ export const getCollaborators = onCall(
           return {
             email: user.email || "",
             isEditor: data.role === "editor",
+            isPending: data.role === "pending",
           };
         } catch (error) {
           logger.error("Error getting user info:", error);
