@@ -74,7 +74,10 @@ const App = () => {
     <div className="app-container">
       <header className="app-header">
         <div className="header-content">
-          <div className="header-title">
+          <div 
+            className="header-title cursor-pointer" 
+            onClick={() => navigate('/')}
+          >
             Echoherence
           </div>
           <AuthComponent 

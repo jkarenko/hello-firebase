@@ -130,7 +130,7 @@ const ProjectList = () => {
   return (
     <div className="project-section" id="projectSection">
       <div className="flex justify-between">
-        <h1 className="text-2xl m-0">Your Projects</h1>
+        <h1 className="text-2xl">My Projects</h1>
         <Button 
           color="primary" 
           onPress={onOpen}
@@ -168,8 +168,8 @@ const ProjectList = () => {
 
       <Divider></Divider>
 
-      <div className="flex justify-between mb-6">
-        <h1 className="text-2xl m-0">Projects Shared With Me</h1>
+      <div className="flex justify-between">
+        <h1 className="text-2xl">Projects Shared With Me</h1>
       </div>
       
       <div className="space-y-8">

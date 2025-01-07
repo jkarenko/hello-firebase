@@ -90,7 +90,7 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
         <div className="flex items-center gap-2">
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
-              <div className="cursor-pointer">
+              <div className="cursor-pointer transition-opacity hover:opacity-80">
                 <Badge
                   color="danger"
                   content={pendingCount}
@@ -106,7 +106,6 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
                     showFallback
                     size="sm"
                     isBordered
-                    className="transition-transform"
                   />
                 </Badge>
               </div>
