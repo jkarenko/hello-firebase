@@ -40,3 +40,4 @@ service-account-key.json
 
 # Emulator data
 .emulator-data/
+firebase-export*/**
