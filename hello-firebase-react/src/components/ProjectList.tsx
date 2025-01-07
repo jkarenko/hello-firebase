@@ -13,6 +13,7 @@ interface Project {
   }>;
   owner: string;
   isCollaborator: boolean;
+  collaboratorRole?: "reader" | "editor" | "pending";
 }
 
 interface CreateProjectResponse {
@@ -163,11 +164,11 @@ const ProjectList = () => {
       <div className="space-y-8">
         <div>
           <div className="project-list">
-            {projects.filter(p => p.isCollaborator).length === 0 ? (
+            {projects.filter(p => p.isCollaborator && p.collaboratorRole !== "pending").length === 0 ? (
               <div className="no-projects">No shared projects</div>
             ) : (
               projects
-                .filter(p => p.isCollaborator)
+                .filter(p => p.isCollaborator && p.collaboratorRole !== "pending")
                 .map((project) => (
                   <div
                     key={project.id}

@@ -313,12 +313,17 @@ export const getProjects = onCall(async (request) => {
         count: versions.length,
       });
 
+      // We know request.auth exists because we checked at the start of the function
+      const auth = request.auth!;
+      const collaboratorRole = projectAccess.collaborators[auth.uid]?.role;
+
       return {
         id: projectAccess.projectId,
         name: projectAccess.projectName,
         versions,
         owner: projectAccess.owner,
-        isCollaborator: request.auth ? projectAccess.owner !== request.auth.uid : false,
+        isCollaborator: projectAccess.owner !== auth.uid,
+        collaboratorRole,
       };
     });
 
@@ -329,6 +334,7 @@ export const getProjects = onCall(async (request) => {
         id: p.id,
         name: p.name,
         versionCount: p.versions.length,
+        collaboratorRole: p.collaboratorRole,
       })),
     });
 

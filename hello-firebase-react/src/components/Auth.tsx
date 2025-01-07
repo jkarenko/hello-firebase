@@ -2,6 +2,7 @@ import type { Auth } from 'firebase/auth';
 import { User, GoogleAuthProvider, signInWithRedirect, signOut } from 'firebase/auth';
 import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/react";
 import { useEffect } from 'react';
+import PendingInvites from './PendingInvites';
 
 interface AuthProps {
   user: User | null;
@@ -77,7 +78,8 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
           Sign in with Google
         </button>
       ) : (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          <PendingInvites />
           <span className="text-sm text-default-600">{user.email}</span>
           <Dropdown placement="bottom-end">
             <DropdownTrigger>

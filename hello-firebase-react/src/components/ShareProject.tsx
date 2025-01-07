@@ -10,6 +10,7 @@ import React from 'react';
 interface Collaborator {
   email: string;
   isEditor: boolean;
+  isPending: boolean;
 }
 
 interface ShareProjectProps {
@@ -270,13 +271,18 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
                             </Button>
                           )}
                           <span className="text-sm">{collaborator.email}</span>
-                          {!isOwner && (
+                          {!isOwner && !collaborator.isPending && (
                             <span className="text-xs text-default-400">
                               {collaborator.isEditor ? "Editor" : "Viewer"}
                             </span>
                           )}
+                          {collaborator.isPending && (
+                            <span className="text-xs text-warning">
+                              Pending
+                            </span>
+                          )}
                         </div>
-                        {isOwner && (
+                        {isOwner && !collaborator.isPending && (
                           <Switch
                             size="sm"
                             isSelected={collaborator.isEditor}
