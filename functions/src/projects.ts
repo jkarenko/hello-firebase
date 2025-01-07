@@ -317,11 +317,21 @@ export const getProjects = onCall(async (request) => {
       const auth = request.auth!;
       const collaboratorRole = projectAccess.collaborators[auth.uid]?.role;
 
+      // Get owner's email
+      let ownerEmail = null;
+      try {
+        const owner = await getAuth().getUser(projectAccess.owner);
+        ownerEmail = owner.email || "";
+      } catch (error) {
+        logger.error("Error getting owner email:", error);
+      }
+
       return {
         id: projectAccess.projectId,
         name: projectAccess.projectName,
         versions,
         owner: projectAccess.owner,
+        ownerEmail,
         isCollaborator: projectAccess.owner !== auth.uid,
         collaboratorRole,
       };

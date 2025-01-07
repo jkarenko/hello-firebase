@@ -8,6 +8,7 @@ interface Project {
   id: string;
   name: string;
   owner: string;
+  ownerEmail: string | null;
   isCollaborator: boolean;
   collaboratorRole?: "reader" | "editor" | "pending";
 }
@@ -112,7 +113,11 @@ const PendingInvites = () => {
           </ModalHeader>
           <ModalBody>
             <div className="space-y-4 py-2">
-              {pendingProjects.length === 0 ? (
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : pendingProjects.length === 0 ? (
                 <div className="text-center text-default-500 py-4">
                   No pending invitations
                 </div>
@@ -125,7 +130,7 @@ const PendingInvites = () => {
                     <div className="space-y-1">
                       <div className="font-medium">{project.name}</div>
                       <div className="text-small text-default-500">
-                        from {project.owner}
+                        from {project.ownerEmail || 'Unknown'}
                       </div>
                     </div>
                     <div className="flex gap-2">
