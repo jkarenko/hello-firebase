@@ -571,15 +571,26 @@ export const addCollaborator = onCall(async (request) => {
         collaboratorEmail: email,
         addedBy: request.auth.uid,
       });
-
-      return {success: true};
     } catch (error) {
       if (error instanceof HttpsError) {
         throw error;
       }
-      logger.error("Error adding collaborator:", error);
-      throw new HttpsError("not-found", "User not found");
+      // Add a dummy write to make timing consistent with successful path
+      // Use a no-op update that doesn't actually change any data
+      await db.collection("projects").doc(projectId).update({
+        projectId: projectId,
+      });
+
+      // Log the error but don't expose it to the client
+      logger.info("Attempted to add non-existent user as collaborator:", {
+        projectId,
+        email,
+        addedBy: request.auth.uid,
+      });
     }
+
+    // Always return success to prevent email enumeration
+    return {success: true};
   } catch (error) {
     logger.error("Error in addCollaborator:", error);
     if (error instanceof HttpsError) {
