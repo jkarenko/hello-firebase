@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, Input, useDisclosure, Switch } from "@nextui-org/react";
-import { UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getFirebaseFunctions, getAuth } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -189,7 +189,17 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
       >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
-            <h2 className="text-lg">Share {projectName}</h2>
+            <div className="flex justify-between items-center w-full">
+              <h2 className="text-lg">Share {projectName}</h2>
+              <Button
+                isIconOnly
+                variant="light"
+                onPress={shareModal.onClose}
+                className="absolute right-2 top-2"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </Button>
+            </div>
             {!isOwner && currentUserEmail && collaborators.some(c => c.email === currentUserEmail) && (
               <div className="text-small text-default-500 flex items-center justify-between">
                 <span>You have {collaborators.find(c => c.email === currentUserEmail)?.isEditor ? "editor" : "viewer"} access</span>
