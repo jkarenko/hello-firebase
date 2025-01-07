@@ -20,9 +20,10 @@ interface GetProjectsResponse {
 
 interface PendingInvitesProps {
   onInviteAccepted?: () => void;
+  setPendingCount?: (count: number) => void;
 }
 
-const PendingInvites = ({ onInviteAccepted }: PendingInvitesProps) => {
+const PendingInvites = ({ onInviteAccepted, setPendingCount }: PendingInvitesProps) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [pendingProjects, setPendingProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,6 +41,7 @@ const PendingInvites = ({ onInviteAccepted }: PendingInvitesProps) => {
         project.isCollaborator && project.collaboratorRole === "pending"
       );
       setPendingProjects(pending);
+      setPendingCount?.(pending.length);
     } catch (error) {
       console.error('Error fetching pending invites:', error);
     } finally {
@@ -60,7 +62,11 @@ const PendingInvites = ({ onInviteAccepted }: PendingInvitesProps) => {
       
       // Remove the project from the list
       const project = pendingProjects.find(p => p.id === projectId);
-      setPendingProjects(prev => prev.filter(p => p.id !== projectId));
+      setPendingProjects(prev => {
+        const newPendingProjects = prev.filter(p => p.id !== projectId);
+        setPendingCount?.(newPendingProjects.length);
+        return newPendingProjects;
+      });
       
       // Show toast for accepted invitation
       if (accept && project) {
@@ -84,50 +90,20 @@ const PendingInvites = ({ onInviteAccepted }: PendingInvitesProps) => {
 
   return (
     <>
-      <div className="relative">
-        <Button
-          isIconOnly
-          variant="light"
-          onPress={onOpen}
-          aria-label="Pending invitations"
-          className="min-w-unit-8 w-unit-8 h-unit-8"
-        >
-          <InboxIcon className="w-5 h-5" />
-          {pendingProjects.length > 0 && (
-            <Badge
-              color="danger"
-              content={pendingProjects.length}
-              placement="top-right"
-              shape="rectangle"
-              size="md"
-              variant="solid"
-            >
-
-            </Badge>
-          )}
-        </Button>
-      </div>
-
-      <Modal
-        isOpen={isOpen}
+      <button
+        id="pending-invites-trigger"
+        onClick={onOpen}
+        className="hidden"
+        aria-hidden="true"
+      />
+      <Modal 
+        isOpen={isOpen} 
         onClose={onClose}
-        size="md"
-        isDismissable={true}
-        hideCloseButton={true}
+        placement="top-center"
       >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
-            <div className="flex justify-between items-center w-full">
-              <h2 className="text-lg">Pending Invitations</h2>
-              <Button
-                isIconOnly
-                variant="light"
-                onPress={onClose}
-                className="absolute right-2 top-2"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </Button>
-            </div>
+            <h2 className="text-lg">Pending Invitations</h2>
           </ModalHeader>
           <ModalBody>
             <div className="space-y-4 py-2">

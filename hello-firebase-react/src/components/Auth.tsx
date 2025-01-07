@@ -1,9 +1,10 @@
 import type { Auth } from 'firebase/auth';
 import { User, GoogleAuthProvider, signInWithRedirect, signOut } from 'firebase/auth';
-import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/react";
-import { useEffect } from 'react';
+import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Badge } from "@nextui-org/react";
+import { useEffect, useState } from 'react';
 import PendingInvites from './PendingInvites';
 import { eventEmitter, PROJECTS_UPDATED } from '../utils/events';
+import { InboxIcon } from '@heroicons/react/24/outline';
 
 interface AuthProps {
   user: User | null;
@@ -12,6 +13,8 @@ interface AuthProps {
 }
 
 const Auth = ({ user, auth, provider }: AuthProps) => {
+  const [pendingCount, setPendingCount] = useState(0);
+  
   console.log('Auth component render:', { user });
 
   // Function to refresh projects by emitting an event
@@ -85,23 +88,53 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
         </button>
       ) : (
         <div className="flex items-center gap-4">
-          <PendingInvites onInviteAccepted={refreshProjects} />
-          <span className="text-sm text-default-600">{user.email}</span>
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
-              <Avatar 
-                name={user.email || ''} 
-                showFallback
-                size="md"
-                className="cursor-pointer"
-              />
+              <div className="cursor-pointer">
+                <Badge
+                  color="danger"
+                  content={pendingCount}
+                  placement="top-right"
+                  shape="rectangle"
+                  showOutline
+                  size="md"
+                  variant="solid"
+                  isInvisible={pendingCount === 0}
+                >
+                  <Avatar 
+                    name={user.email || ''} 
+                    showFallback
+                    size="md"
+                    isBordered
+                  />
+                </Badge>
+              </div>
             </DropdownTrigger>
             <DropdownMenu aria-label="Profile Actions" variant="flat">
+              <DropdownItem 
+                key="inbox" 
+                startContent={<InboxIcon className="w-5 h-5" />}
+                textValue="Inbox"
+                description={pendingCount > 0 ? `${pendingCount} pending invites` : "No pending invites"}
+                onPress={() => {
+                  const inboxElement = document.getElementById('pending-invites-trigger');
+                  if (inboxElement) {
+                    inboxElement.click();
+                  }
+                }}
+              >
+                Inbox
+              </DropdownItem>
               <DropdownItem key="logout" className="text-danger" color="danger" onClick={handleLogout}>
                 Log Out
               </DropdownItem>
             </DropdownMenu>
           </Dropdown>
+
+          <PendingInvites 
+            onInviteAccepted={refreshProjects} 
+            setPendingCount={setPendingCount}
+          />
         </div>
       )}
     </div>
