@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure, Divider } from "@nextui-org/react";
 import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
+import { useNavigate } from 'react-router-dom';
 
 interface Project {
   id: string;
@@ -12,10 +13,6 @@ interface Project {
   }>;
   owner: string;
   isCollaborator: boolean;
-}
-
-interface ProjectListProps {
-  onProjectSelect: (projectId: string) => void;
 }
 
 interface CreateProjectResponse {
@@ -30,7 +27,8 @@ interface GetProjectsResponse {
   songs: Project[];
 }
 
-const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
+const ProjectList = () => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +140,7 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
                   <div
                     key={project.id}
                     className="project-card"
-                    onClick={() => onProjectSelect(project.id)}
+                    onClick={() => navigate(`/project/${project.id}`)}
                   >
                     <h2>{project.name}</h2>
                     <p>
@@ -174,7 +172,7 @@ const ProjectList = ({ onProjectSelect }: ProjectListProps) => {
                   <div
                     key={project.id}
                     className="project-card"
-                    onClick={() => onProjectSelect(project.id)}
+                    onClick={() => navigate(`/project/${project.id}`)}
                   >
                     <h2>{project.name}</h2>
                     <p>
