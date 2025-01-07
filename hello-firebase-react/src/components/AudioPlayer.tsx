@@ -46,7 +46,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   const offset = useRef<number>(0);
   const memoryCache = useRef<Map<string, AudioBuffer>>(new Map());
   const updateInterval = useRef<number | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
 
   // Initialize AudioContext and AudioCache
   useEffect(() => {
@@ -214,10 +213,10 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
       sourceNode.current = null;
     }
     
-    // Cancel any pending animation frame
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+    // Clear the update interval
+    if (updateInterval.current) {
+      clearInterval(updateInterval.current);
+      updateInterval.current = null;
     }
 
     offset.current = getCurrentTime();
@@ -242,13 +241,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
       setCurrentTime(0);
       return;
     }
-
-    if (isPlaying) {
-      animationFrameRef.current = requestAnimationFrame(updateDisplay);
-    }
-  }, [getCurrentTime, isPlaying, stopAudio]);
-
-  // Remove getCurrentDisplayTime since we're not throttling updates anymore
+  }, [getCurrentTime, stopAudio]);
 
   const playAudio = useCallback((startFrom: number = 0) => {
     if (!audioContext.current || !audioBuffer.current) {
@@ -271,8 +264,8 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     sourceNode.current.start(0, offset.current);
     setIsPlaying(true);
 
-    // Start the display update loop
-    requestAnimationFrame(updateDisplay);
+    // Start the display update loop with 100ms interval (10fps)
+    updateInterval.current = window.setInterval(updateDisplay, 100);
   }, [stopAudio, updateDisplay]);
 
   const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -348,11 +341,11 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     }
   }, [isPlaying, playAudio, stopAudio]);
 
-  // Clean up animation frame on unmount
+  // Clean up interval on unmount
   useEffect(() => {
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (updateInterval.current) {
+        clearInterval(updateInterval.current);
       }
     };
   }, []);
