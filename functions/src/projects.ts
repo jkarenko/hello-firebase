@@ -780,3 +780,69 @@ export const getProjectOwner = onCall(
     }
   }
 );
+
+export const respondToCollaborationInvite = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId, accept} = request.data;
+      if (!projectId || typeof accept !== "boolean") {
+        throw new HttpsError("invalid-argument", "Project ID and accept status are required");
+      }
+
+      // Check if project exists
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      // Get the user's current collaboration status
+      const userCollaboration = projectAccess.collaborators?.[request.auth.uid];
+      if (!userCollaboration) {
+        throw new HttpsError("not-found", "No collaboration invitation found");
+      }
+
+      // Check if the invitation is pending
+      if (userCollaboration.role !== "pending") {
+        throw new HttpsError("failed-precondition", "No pending invitation to respond to");
+      }
+
+      if (accept) {
+        // Accept the invitation by setting role to reader
+        await addProjectCollaborator(projectId, request.auth.uid, "reader");
+
+        logger.info("Collaboration invitation accepted", {
+          projectId,
+          collaboratorUid: request.auth.uid,
+          previousRole: "pending",
+          newRole: "reader",
+        });
+      } else {
+        // Reject the invitation by removing the collaborator
+        await removeCollaborator(projectId, request.auth.uid);
+
+        logger.info("Collaboration invitation rejected", {
+          projectId,
+          collaboratorUid: request.auth.uid,
+        });
+      }
+
+      return {success: true};
+    } catch (error) {
+      logger.error("Error responding to collaboration invite:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to respond to collaboration invitation");
+    }
+  }
+);
