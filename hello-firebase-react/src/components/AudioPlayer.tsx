@@ -385,7 +385,9 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   }), [projectId, project?.name]);
 
   const handleRename = useCallback(async () => {
-    if (!project || !newProjectName.trim()) return;
+    if (!project || !newProjectName.trim()) {
+      return;
+    }
 
     try {
       const functions = getFirebaseFunctions();

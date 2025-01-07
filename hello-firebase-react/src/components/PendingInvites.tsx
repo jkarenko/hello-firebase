@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure, Badge } from "@nextui-org/react";
-import { InboxIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
@@ -100,6 +99,9 @@ const PendingInvites = ({ onInviteAccepted, setPendingCount }: PendingInvitesPro
         isOpen={isOpen} 
         onClose={onClose}
         placement="top-center"
+        classNames={{
+          wrapper: "z-[2000]"
+        }}
       >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
