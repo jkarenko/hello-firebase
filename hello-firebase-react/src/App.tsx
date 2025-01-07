@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Card, CardBody } from "@nextui-org/react";
 import { getAuth, GoogleAuthProvider, User, Auth as FirebaseAuth, onAuthStateChanged, getRedirectResult } from 'firebase/auth';
 import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import AuthComponent from './components/Auth';
@@ -72,26 +71,29 @@ const App = () => {
   }
 
   return (
-    <div className="container mx-auto px-4">
-      <Card className="my-4">
-        <CardBody>
-          <div className="auth-section">
-            <AuthComponent 
-              user={user}
-              auth={auth}
-              provider={provider}
-            />
+    <div className="app-container">
+      <header className="app-header">
+        <div className="header-content">
+          <div className="header-title">
+            Echoherence
           </div>
-        </CardBody>
-      </Card>
+          <AuthComponent 
+            user={user}
+            auth={auth}
+            provider={provider}
+          />
+        </div>
+      </header>
 
-      {user && (
-        <Routes>
-          <Route path="/" element={<ProjectList />} />
-          <Route path="/project/:projectId" element={<ProjectView />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      )}
+      <main className="main-content">
+        {user && (
+          <Routes>
+            <Route path="/" element={<ProjectList />} />
+            <Route path="/project/:projectId" element={<ProjectView />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        )}
+      </main>
     </div>
   );
 };

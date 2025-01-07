@@ -129,7 +129,7 @@ const ProjectList = () => {
 
   return (
     <div className="project-section" id="projectSection">
-      <div className="flex justify-between mb-6 items-center">
+      <div className="flex justify-between">
         <h1 className="text-2xl m-0">Your Projects</h1>
         <Button 
           color="primary" 

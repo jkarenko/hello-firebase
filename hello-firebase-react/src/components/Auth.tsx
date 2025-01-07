@@ -81,13 +81,13 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
   };
 
   return (
-    <div className="auth-section flex justify-end items-center">
+    <div className="auth-container">
       {!user ? (
         <button onClick={() => handleLogin(true)} className="auth-button">
           Sign in with Google
         </button>
       ) : (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
               <div className="cursor-pointer">
@@ -95,25 +95,34 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
                   color="danger"
                   content={pendingCount}
                   placement="top-right"
-                  shape="rectangle"
+                  shape="circle"
                   showOutline
-                  size="md"
+                  size="sm"
                   variant="solid"
                   isInvisible={pendingCount === 0}
                 >
                   <Avatar 
                     name={user.email || ''} 
                     showFallback
-                    size="md"
+                    size="sm"
                     isBordered
+                    className="transition-transform"
                   />
                 </Badge>
               </div>
             </DropdownTrigger>
             <DropdownMenu aria-label="Profile Actions" variant="flat">
               <DropdownItem 
+                key="email" 
+                className="h-14 gap-2"
+                textValue={user.email || ''}
+              >
+                <p className="font-semibold">Signed in as</p>
+                <p className="font-semibold">{user.email}</p>
+              </DropdownItem>
+              <DropdownItem 
                 key="inbox" 
-                startContent={<InboxIcon className="w-5 h-5" />}
+                startContent={<InboxIcon className="w-4 h-4" />}
                 textValue="Inbox"
                 description={pendingCount > 0 ? `${pendingCount} pending invites` : "No pending invites"}
                 onPress={() => {
