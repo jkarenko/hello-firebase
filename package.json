@@ -8,7 +8,10 @@
     "build:functions": "npm --prefix functions run build",
     "build:react": "npm --prefix hello-firebase-react run build",
     "build": "npm run build:functions && npm run build:react",
-    "dev": "FIREBASE_APP_STORAGE=localhost:9199 GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit",
+    "dev:react": "npm --prefix hello-firebase-react run dev",
+    "dev:functions": "npm --prefix functions run dev",
+    "dev:emulator": "FIREBASE_APP_STORAGE=localhost:9199 GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit",
+    "dev": "concurrently \"npm run dev:functions\" \"npm run dev:react\" \"npm run dev:emulator\"",
     "start": "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit"
   },
   "keywords": [],
@@ -17,5 +20,9 @@
   "dependencies": {
     "firebase-functions": "^6.2.0",
     "firebase-tools": "^13.0.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.0"
   }
 }

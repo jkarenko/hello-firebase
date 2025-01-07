@@ -5,6 +5,8 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
+    // Allow both localhost and 127.0.0.1
+    host: true,
     proxy: {
       "/getSongVersions": {
         target: "http://127.0.0.1:5001/jkarenko-hello-firebase/us-central1",
@@ -14,6 +16,13 @@ export default defineConfig({
         target: "http://127.0.0.1:5001/jkarenko-hello-firebase/us-central1",
         changeOrigin: true,
       },
+    },
+    // Add HMR configuration
+    hmr: {
+      overlay: true,
+    },
+    watch: {
+      usePolling: true,
     },
   },
 });

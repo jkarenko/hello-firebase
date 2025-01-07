@@ -15,17 +15,20 @@ let analytics: Analytics | null = null;
 let firestore: Firestore;
 let storage: FirebaseStorage;
 
+const HOST = window.location.hostname;
+const isDevelopment = HOST === "localhost" || HOST === "127.0.0.1";
+// Always use the same host for emulators as the one used to access the app
+const EMULATOR_HOST = HOST;
+
 const firebaseConfig = {
   apiKey: "AIzaSyBH2W_CEsu_3srnmQPx3cm1HEQS46_gnIM",
-  authDomain: "jkarenko-hello-firebase.firebaseapp.com",
+  authDomain: isDevelopment ? `${EMULATOR_HOST}:9099` : "jkarenko-hello-firebase.firebaseapp.com",
   projectId: "jkarenko-hello-firebase",
-  storageBucket: "jkarenko-hello-firebase.firebasestorage.app",
+  storageBucket: isDevelopment ? `${EMULATOR_HOST}:9199` : "jkarenko-hello-firebase.firebasestorage.app",
   messagingSenderId: "380797680247",
   appId: "1:380797680247:web:8ef0365414cca9e2ace472",
   measurementId: "G-Z227CTB2VN",
 };
-
-const isDevelopment = window.location.hostname === "127.0.0.1";
 
 export function initializeFirebase() {
   if (initialized) {
@@ -47,10 +50,15 @@ export function initializeFirebase() {
   }
 
   if (isDevelopment) {
-    connectAuthEmulator(auth, "http://127.0.0.1:9099", {disableWarnings: true});
-    connectFunctionsEmulator(functions, "127.0.0.1", 5001);
-    connectFirestoreEmulator(firestore, "127.0.0.1", 8080);
-    connectStorageEmulator(storage, "127.0.0.1", 9199);
+    console.log("🔧 Using Firebase Emulators", {
+      host: EMULATOR_HOST,
+      authDomain: firebaseConfig.authDomain,
+      storageBucket: firebaseConfig.storageBucket,
+    });
+    connectAuthEmulator(auth, `http://${EMULATOR_HOST}:9099`, {disableWarnings: true});
+    connectFunctionsEmulator(functions, EMULATOR_HOST, 5001);
+    connectFirestoreEmulator(firestore, EMULATOR_HOST, 8080);
+    connectStorageEmulator(storage, EMULATOR_HOST, 9199);
   }
 
   initialized = true;
@@ -99,3 +107,5 @@ export function getFirebaseStorage() {
   }
   return storage;
 }
+
+export {getAuth} from "firebase/auth";
