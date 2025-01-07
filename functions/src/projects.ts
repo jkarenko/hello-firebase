@@ -131,6 +131,78 @@ export async function removeCollaborator(projectId: string, collaboratorUid: str
   }
 }
 
+export const removeCollaboratorCall = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId, email} = request.data;
+      if (!projectId || !email) {
+        throw new HttpsError("invalid-argument", "Project ID and email are required");
+      }
+
+      // Check if user has access to the project
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      // Get user by email
+      try {
+        const userRecord = await getAuth().getUserByEmail(email);
+
+        // Don't allow removing the owner
+        if (userRecord.uid === projectAccess.owner) {
+          throw new HttpsError("invalid-argument", "Cannot remove project owner");
+        }
+
+        // Check if user is actually a collaborator
+        if (!projectAccess.collaborators?.[userRecord.uid]) {
+          throw new HttpsError("not-found", "User is not a collaborator on this project");
+        }
+
+        // Allow if user is owner OR if user is removing themselves
+        if (projectAccess.owner !== request.auth.uid && userRecord.uid !== request.auth.uid) {
+          throw new HttpsError("permission-denied", "Only the project owner can remove other collaborators");
+        }
+
+        // Remove the collaborator
+        await removeCollaborator(projectId, userRecord.uid);
+
+        logger.info("Removed collaborator from project", {
+          projectId,
+          collaboratorUid: userRecord.uid,
+          collaboratorEmail: email,
+          removedBy: request.auth.uid,
+          selfRemoval: userRecord.uid === request.auth.uid,
+        });
+
+        return {success: true};
+      } catch (error) {
+        if (error instanceof HttpsError) {
+          throw error;
+        }
+        logger.error("Error removing collaborator:", error);
+        throw new HttpsError("not-found", "User not found");
+      }
+    } catch (error) {
+      logger.error("Error in removeCollaborator:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to remove collaborator");
+    }
+  }
+);
+
 export const createProject = onCall(async (request) => {
   try {
     // Ensure user is authenticated

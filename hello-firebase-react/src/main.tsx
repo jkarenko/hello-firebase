@@ -4,6 +4,7 @@ import { NextUIProvider } from '@nextui-org/react';
 import './index.css';
 import App from './App';
 import { initializeFirebase } from './firebase';
+import { BrowserRouter } from 'react-router-dom';
 
 // Initialize Firebase first
 initializeFirebase();
@@ -15,16 +16,20 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 
 if (isDevelopment) {
   root.render(
-    <NextUIProvider>
-      <App />
-    </NextUIProvider>
+    <BrowserRouter>
+      <NextUIProvider>
+        <App />
+      </NextUIProvider>
+    </BrowserRouter>
   );
 } else {
   root.render(
     <React.StrictMode>
-      <NextUIProvider>
-        <App />
-      </NextUIProvider>
+      <BrowserRouter>
+        <NextUIProvider>
+          <App />
+        </NextUIProvider>
+      </BrowserRouter>
     </React.StrictMode>
   );
 }

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, Input, useDisclosure, Switch } from "@nextui-org/react";
-import { UserPlusIcon } from '@heroicons/react/24/outline';
-import { getFirebaseFunctions } from '../firebase';
+import { UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { getFirebaseFunctions, getAuth } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 
 interface Collaborator {
   email: string;
@@ -15,11 +17,35 @@ interface ShareProjectProps {
 }
 
 const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const navigate = useNavigate();
+  const shareModal = useDisclosure();
+  const confirmModal = useDisclosure();
+  const leaveConfirmModal = useDisclosure();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [ownerEmail, setOwnerEmail] = useState<string>('');
+  const [isOwner, setIsOwner] = useState(false);
+  const [collaboratorToRemove, setCollaboratorToRemove] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+
+  // Track auth state
+  useEffect(() => {
+    const auth = getAuth();
+    console.log('Initial auth state:', {
+      currentUser: auth.currentUser,
+      email: auth.currentUser?.email
+    });
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('Auth state changed:', {
+        user,
+        email: user?.email
+      });
+      setCurrentUserEmail(user?.email || null);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const fetchCollaborators = async () => {
     try {
@@ -30,17 +56,40 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
 
       // Get owner email
       const ownerInfo = await httpsCallable(functions, 'getProjectOwner')({ projectId });
-      setOwnerEmail((ownerInfo.data as { email: string }).email);
+      const ownerEmailResult = (ownerInfo.data as { email: string }).email;
+      setOwnerEmail(ownerEmailResult);
+      
+      // Check if current user is owner by comparing emails
+      const auth = getAuth();
+      const userEmail = auth.currentUser?.email || currentUserEmail;
+      const isCurrentUserOwner = userEmail === ownerEmailResult;
+      
+      console.log('Debug ownership check:', {
+        userEmail,
+        currentUserEmail,
+        ownerEmailResult,
+        isCurrentUserOwner,
+        authCurrentUser: auth.currentUser
+      });
+      
+      setIsOwner(isCurrentUserOwner);
     } catch (err) {
       console.error('Error fetching collaborators:', err);
     }
   };
 
+  // Refetch when currentUserEmail changes
   useEffect(() => {
-    if (isOpen) {
+    console.log('Share modal state changed:', {
+      isOpen: shareModal.isOpen,
+      currentUserEmail,
+      projectId
+    });
+    
+    if (shareModal.isOpen) {
       fetchCollaborators();
     }
-  }, [isOpen, projectId]);
+  }, [shareModal.isOpen, projectId, currentUserEmail]);
 
   const handleShare = async () => {
     try {
@@ -67,42 +116,118 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
     }
   };
 
+  const handleRemoveCollaborator = async (email: string) => {
+    setCollaboratorToRemove(email);
+    confirmModal.onOpen();
+  };
+
+  const confirmRemoveCollaborator = async () => {
+    if (!collaboratorToRemove) {
+      return;
+    }
+    
+    try {
+      const functions = getFirebaseFunctions();
+      const removeCollaboratorFn = httpsCallable(functions, 'removeCollaboratorCall');
+      await removeCollaboratorFn({ projectId, email: collaboratorToRemove });
+      await fetchCollaborators();
+      // Close modal and reset state
+      confirmModal.onClose();
+      setCollaboratorToRemove(null);
+      // Return focus to the share modal
+      setTimeout(() => {
+        const shareModalElement = document.querySelector('[role="dialog"]');
+        if (shareModalElement) {
+          (shareModalElement as HTMLElement).focus();
+        }
+      }, 0);
+    } catch (err) {
+      console.error('Error removing collaborator:', err);
+      setError(err instanceof Error ? err.message : 'Failed to remove collaborator');
+    }
+  };
+
+  const handleLeaveProject = async () => {
+    if (!currentUserEmail) {
+      return;
+    }
+    
+    try {
+      const functions = getFirebaseFunctions();
+      const removeCollaboratorFn = httpsCallable(functions, 'removeCollaboratorCall');
+      await removeCollaboratorFn({ projectId, email: currentUserEmail });
+      leaveConfirmModal.onClose();
+      shareModal.onClose();
+      // Navigate back to project list
+      navigate('/');
+    } catch (err) {
+      console.error('Error leaving project:', err);
+      setError(err instanceof Error ? err.message : 'Failed to leave project');
+    }
+  };
+
+  // Add debug render log
+  console.log('Render state:', { isOwner, ownerEmail, collaborators });
+
   return (
     <>
       <Button
         isIconOnly
         variant="light"
-        onPress={onOpen}
+        onPress={shareModal.onOpen}
         aria-label="Share project"
       >
         <UserPlusIcon className="w-6 h-6" />
       </Button>
 
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
+      <Modal 
+        isOpen={shareModal.isOpen} 
+        onClose={shareModal.onClose} 
+        size="lg"
+        isDismissable={true}
+        hideCloseButton={true}
+      >
         <ModalContent>
-          <ModalHeader>Share {projectName}</ModalHeader>
-          <ModalBody>
-            <div className="space-y-6">
-              {/* Add collaborator section */}
-              <div className="flex gap-2">
-                <Input
-                  label="Email Address"
-                  placeholder="Enter collaborator's email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                  errorMessage={error}
-                  className="flex-grow"
-                />
-                <Button 
-                  color="primary"
-                  className="self-end"
-                  onPress={handleShare}
-                  isDisabled={!email.trim()}
+          <ModalHeader className="flex flex-col gap-1">
+            <h2 className="text-lg">Share {projectName}</h2>
+            {!isOwner && currentUserEmail && collaborators.some(c => c.email === currentUserEmail) && (
+              <div className="text-small text-default-500 flex items-center justify-between">
+                <span>You have {collaborators.find(c => c.email === currentUserEmail)?.isEditor ? "editor" : "viewer"} access</span>
+                <Button
+                  color="danger"
+                  variant="light"
+                  onPress={() => leaveConfirmModal.onOpen()}
+                  size="sm"
                 >
-                  Share
+                  Leave Project
                 </Button>
               </div>
+            )}
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-6">
+              {/* Add collaborator section - only visible to owners and editors */}
+              {(isOwner || collaborators.find(c => c.email === currentUserEmail)?.isEditor) && (
+                <div className="flex gap-2">
+                  <Input
+                    label="Email Address"
+                    placeholder="Enter collaborator's email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    errorMessage={error}
+                    className="flex-grow"
+                  />
+                  <Button 
+                    color="primary"
+                    className="self-end"
+                    onPress={handleShare}
+                    isDisabled={!email.trim()}
+                  >
+                    Share
+                  </Button>
+                </div>
+              )}
 
               {/* Owner section */}
               {ownerEmail && (
@@ -121,19 +246,106 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
                   <div className="space-y-2">
                     {collaborators.map((collaborator) => (
                       <div key={collaborator.email} className="flex items-center justify-between">
-                        <span className="text-sm">{collaborator.email}</span>
-                        <Switch
-                          size="sm"
-                          isSelected={collaborator.isEditor}
-                          onValueChange={(checked) => handleToggleEditor(collaborator.email, checked)}
-                        >
-                          Editor
-                        </Switch>
+                        <div className="flex items-center gap-2">
+                          {isOwner && (
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="light"
+                              onPress={() => handleRemoveCollaborator(collaborator.email)}
+                              className="text-danger"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <span className="text-sm">{collaborator.email}</span>
+                          {!isOwner && (
+                            <span className="text-xs text-default-400">
+                              {collaborator.isEditor ? "Editor" : "Viewer"}
+                            </span>
+                          )}
+                        </div>
+                        {isOwner && (
+                          <Switch
+                            size="sm"
+                            isSelected={collaborator.isEditor}
+                            onValueChange={(checked) => handleToggleEditor(collaborator.email, checked)}
+                          >
+                            Editor
+                          </Switch>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+            </div>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal 
+        isOpen={confirmModal.isOpen} 
+        onClose={confirmModal.onClose} 
+        size="sm"
+        isDismissable={true}
+      >
+        <ModalContent>
+          <ModalHeader>Remove Collaborator</ModalHeader>
+          <ModalBody>
+            <div className="space-y-4 pb-4">
+              <p>Are you sure you want to remove {collaboratorToRemove} from this project?</p>
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="light" 
+                  onPress={() => {
+                    confirmModal.onClose();
+                    setCollaboratorToRemove(null);
+                  }}
+                  autoFocus
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  color="danger" 
+                  onPress={confirmRemoveCollaborator}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Leave Project Confirmation Modal */}
+      <Modal 
+        isOpen={leaveConfirmModal.isOpen} 
+        onClose={leaveConfirmModal.onClose} 
+        size="sm"
+        isDismissable={true}
+      >
+        <ModalContent>
+          <ModalHeader>Leave Project</ModalHeader>
+          <ModalBody>
+            <div className="space-y-4 pb-4">
+              <p>Are you sure you want to leave this project? You'll lose access to all project content.</p>
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="light" 
+                  onPress={leaveConfirmModal.onClose}
+                  autoFocus
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  color="danger" 
+                  onPress={handleLeaveProject}
+                >
+                  Leave Project
+                </Button>
+              </div>
             </div>
           </ModalBody>
         </ModalContent>
