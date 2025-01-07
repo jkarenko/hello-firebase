@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner } from "@nextui-org/react";
+import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@nextui-org/react";
 import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
+import { PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { AudioCache } from '../utils/AudioCache';
 import FileUpload from './FileUpload';
 import ShareProject from './ShareProject';
@@ -17,6 +18,7 @@ interface Project {
   id: string;
   name: string;
   versions: Version[];
+  owner: string;
 }
 
 interface AudioPlayerProps {
@@ -28,6 +30,7 @@ interface GetProjectResponse {
   id: string;
   name: string;
   versions: Version[];
+  owner: string;
 }
 
 const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
@@ -38,6 +41,8 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   const [duration, setDuration] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [newProjectName, setNewProjectName] = useState('');
+  const renameModal = useDisclosure();
 
   const audioContext = useRef<AudioContext | null>(null);
   const sourceNode = useRef<AudioBufferSourceNode | null>(null);
@@ -379,6 +384,29 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     projectName: project?.name || ''
   }), [projectId, project?.name]);
 
+  const handleRename = useCallback(async () => {
+    if (!project || !newProjectName.trim()) return;
+
+    try {
+      const functions = getFirebaseFunctions();
+      const renameProjectFn = httpsCallable(functions, 'renameProject');
+      await renameProjectFn({ projectId, name: newProjectName.trim() });
+      
+      setProject(prev => prev ? { ...prev, name: newProjectName.trim() } : null);
+      renameModal.onClose();
+    } catch (err) {
+      console.error('Error renaming project:', err);
+      setError('Failed to rename project. Please try again.');
+    }
+  }, [project, projectId, newProjectName]);
+
+  const openRenameModal = useCallback(() => {
+    if (project) {
+      setNewProjectName(project.name);
+      renameModal.onOpen();
+    }
+  }, [project]);
+
   if (loading) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
@@ -479,9 +507,68 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
         </div>
 
         {/* Project title */}
-        <h1 className="text-4xl font-normal text-left text-foreground">
-          {project?.name}
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-4xl font-normal text-left text-foreground">
+            {project?.name}
+          </h1>
+          {project && project.owner === getFirebaseAuth().currentUser?.uid && (
+            <Button
+              isIconOnly
+              variant="light"
+              className="min-w-unit-8 w-unit-8 h-unit-8"
+              aria-label="Rename project"
+              onPress={openRenameModal}
+            >
+              <PencilIcon className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* Rename Modal */}
+        <Modal 
+          isOpen={renameModal.isOpen} 
+          onClose={renameModal.onClose}
+          size="sm"
+          isDismissable={true}
+          hideCloseButton={true}
+        >
+          <ModalContent>
+            <ModalHeader className="flex flex-col gap-1">
+              <div className="flex justify-between items-center w-full">
+                <h2 className="text-lg">Rename Project</h2>
+                <Button
+                  isIconOnly
+                  variant="light"
+                  onPress={renameModal.onClose}
+                  className="absolute right-2 top-2"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </Button>
+              </div>
+            </ModalHeader>
+            <ModalBody>
+              <Input
+                label="Project Name"
+                placeholder="Enter project name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                autoFocus
+              />
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="light" onPress={renameModal.onClose}>
+                Cancel
+              </Button>
+              <Button 
+                color="primary" 
+                onPress={handleRename}
+                isDisabled={!newProjectName.trim() || newProjectName.trim() === project?.name}
+              >
+                Rename
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
 
         {/* Version selector */}
         {project.versions.length > 0 && (

@@ -495,6 +495,7 @@ export const getProject = onCall(
         id: projectAccess.projectId,
         name: projectAccess.projectName,
         versions,
+        owner: projectAccess.owner,
       };
     } catch (error) {
       logger.error("Error getting project:", error);
@@ -859,6 +860,67 @@ export const respondToCollaborationInvite = onCall(
         throw error;
       }
       throw new HttpsError("internal", "Failed to respond to collaboration invitation");
+    }
+  }
+);
+
+export const renameProject = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId, name} = request.data;
+      if (!projectId || !name || typeof name !== "string" || name.trim().length === 0) {
+        throw new HttpsError("invalid-argument", "Project ID and new name are required");
+      }
+
+      // Check if project exists and get access info
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      // Check if user is the owner or an editor
+      const isOwner = projectAccess.owner === request.auth.uid;
+      const isEditor = projectAccess.collaborators?.[request.auth.uid]?.role === "editor";
+      if (!isOwner && !isEditor) {
+        throw new HttpsError("permission-denied", "Only project owners and editors can rename projects");
+      }
+
+      // Update the project name
+      const now = Timestamp.now();
+      await db.collection("projects").doc(projectId).update({
+        projectName: name.trim(),
+        updatedAt: now,
+      });
+
+      logger.info("Project renamed", {
+        projectId,
+        oldName: projectAccess.projectName,
+        newName: name.trim(),
+        updatedBy: request.auth.uid,
+        isOwner,
+        isEditor,
+      });
+
+      return {
+        id: projectId,
+        name: name.trim(),
+      };
+    } catch (error) {
+      logger.error("Error renaming project:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to rename project");
     }
   }
 );
