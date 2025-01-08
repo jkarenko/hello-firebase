@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure } from "@nextui-org/react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody } from "@nextui-org/react";
 import { getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
@@ -20,10 +20,11 @@ interface GetProjectsResponse {
 interface PendingInvitesProps {
   onInviteAccepted?: () => void;
   setPendingCount?: (count: number) => void;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
 }
 
-const PendingInvites = ({ onInviteAccepted, setPendingCount }: PendingInvitesProps) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+const PendingInvites = ({ onInviteAccepted, setPendingCount, isOpen, onOpenChange }: PendingInvitesProps) => {
   const [pendingProjects, setPendingProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -88,74 +89,66 @@ const PendingInvites = ({ onInviteAccepted, setPendingCount }: PendingInvitesPro
   };
 
   return (
-    <>
-      <button
-        id="pending-invites-trigger"
-        onClick={onOpen}
-        className="hidden"
-        aria-hidden="true"
-      />
-      <Modal 
-        isOpen={isOpen} 
-        onClose={onClose}
-        placement="top-center"
-        classNames={{
-          wrapper: "z-[2000]"
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            <h2 className="text-lg">Pending Invitations</h2>
-          </ModalHeader>
-          <ModalBody>
-            <div className="space-y-4 py-2">
-              {loading ? (
-                <div className="flex justify-center items-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : pendingProjects.length === 0 ? (
-                <div className="text-center text-default-500 py-4">
-                  No pending invitations
-                </div>
-              ) : (
-                pendingProjects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="flex items-center justify-between p-4 bg-default-100 rounded-lg"
-                  >
-                    <div className="space-y-1">
-                      <div className="font-medium">{project.name}</div>
-                      <div className="text-small text-default-500">
-                        from {project.ownerEmail || 'Unknown'}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        color="danger"
-                        variant="flat"
-                        size="sm"
-                        onPress={() => handleResponse(project.id, false)}
-                        isLoading={actionLoading === project.id}
-                      >
-                        Decline
-                      </Button>
-                      <Button
-                        color="primary"
-                        size="sm"
-                        onPress={() => handleResponse(project.id, true)}
-                        isLoading={actionLoading === project.id}
-                      >
-                        Accept
-                      </Button>
+    <Modal 
+      isOpen={isOpen} 
+      onClose={() => onOpenChange(false)}
+      placement="top-center"
+      classNames={{
+        wrapper: "z-[2000]"
+      }}
+    >
+      <ModalContent>
+        <ModalHeader className="flex flex-col gap-1">
+          <h2 className="text-lg">Pending Invitations</h2>
+        </ModalHeader>
+        <ModalBody>
+          <div className="space-y-4 py-2">
+            {loading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : pendingProjects.length === 0 ? (
+              <div className="text-center text-default-500 py-4">
+                No pending invitations
+              </div>
+            ) : (
+              pendingProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between p-4 bg-default-100 rounded-lg"
+                >
+                  <div className="space-y-1">
+                    <div className="font-medium">{project.name}</div>
+                    <div className="text-small text-default-500">
+                      from {project.ownerEmail || 'Unknown'}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </>
+                  <div className="flex gap-2">
+                    <Button
+                      color="danger"
+                      variant="flat"
+                      size="sm"
+                      onPress={() => handleResponse(project.id, false)}
+                      isLoading={actionLoading === project.id}
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      color="primary"
+                      size="sm"
+                      onPress={() => handleResponse(project.id, true)}
+                      isLoading={actionLoading === project.id}
+                    >
+                      Accept
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </ModalBody>
+      </ModalContent>
+    </Modal>
   );
 };
 

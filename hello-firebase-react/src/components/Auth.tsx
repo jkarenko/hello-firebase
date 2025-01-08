@@ -14,6 +14,7 @@ interface AuthProps {
 
 const Auth = ({ user, auth, provider }: AuthProps) => {
   const [pendingCount, setPendingCount] = useState(0);
+  const [isInboxOpen, setIsInboxOpen] = useState(false);
   
   console.log('Auth component render:', { user });
 
@@ -124,16 +125,11 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
                 startContent={<InboxIcon className="w-4 h-4" />}
                 textValue="Inbox"
                 description={pendingCount > 0 ? `${pendingCount} pending invites` : "No pending invites"}
-                onPress={() => {
-                  const inboxElement = document.getElementById('pending-invites-trigger');
-                  if (inboxElement) {
-                    inboxElement.click();
-                  }
-                }}
+                onPress={() => setIsInboxOpen(true)}
               >
                 Inbox
               </DropdownItem>
-              <DropdownItem key="logout" className="text-danger" color="danger" onClick={handleLogout}>
+              <DropdownItem key="logout" className="text-danger" color="danger" onPress={handleLogout}>
                 Log Out
               </DropdownItem>
             </DropdownMenu>
@@ -142,6 +138,8 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
           <PendingInvites 
             onInviteAccepted={refreshProjects} 
             setPendingCount={setPendingCount}
+            isOpen={isInboxOpen}
+            onOpenChange={setIsInboxOpen}
           />
         </div>
       )}
