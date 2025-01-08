@@ -95,7 +95,7 @@ export async function createProjectAccess(projectId: string, ownerUid: string, p
 export async function addProjectCollaborator(
   projectId: string,
   collaboratorUid: string,
-  role: "reader" | "editor" | "pending" = "pending"
+  role: "reader" | "editor" | "pending" = projectId === "sample_welcome_project" ? "reader" : "pending"
 ): Promise<void> {
   try {
     const now = Timestamp.now();

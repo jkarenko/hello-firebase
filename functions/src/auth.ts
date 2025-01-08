@@ -1,6 +1,8 @@
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import {getAuth} from "firebase-admin/auth";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {addProjectCollaborator} from "./projects";
 
 // Middleware to verify Firebase ID token
 export const verifyToken = async (token: string) => {
@@ -59,3 +61,35 @@ async function checkUserAccess(uid: string): Promise<boolean> {
     return false;
   }
 }
+
+export const addUserToWelcomeProject = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      // Add user to the welcome project
+      await addProjectCollaborator("sample_welcome_project", request.auth.uid);
+
+      logger.info("Added user to welcome project", {
+        userId: request.auth.uid,
+        userEmail: request.auth.token.email,
+      });
+
+      return {success: true};
+    } catch (error) {
+      logger.error("Error adding user to welcome project:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to add user to welcome project");
+    }
+  }
+);

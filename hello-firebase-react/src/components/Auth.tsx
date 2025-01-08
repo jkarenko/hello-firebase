@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react';
 import PendingInvites from './PendingInvites';
 import { eventEmitter, PROJECTS_UPDATED } from '../utils/events';
 import { InboxIcon } from '@heroicons/react/24/outline';
+import { getFirebaseFunctions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
+import { toast } from 'sonner';
 
 interface AuthProps {
   user: User | null;
@@ -35,6 +38,37 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
       handleLogin(false);
     }
   }, []);
+
+  // Effect to handle first-time sign-in
+  useEffect(() => {
+    const handleFirstTimeSignIn = async () => {
+      if (!user) {
+        return;
+      }
+
+      try {
+        const functions = getFirebaseFunctions();
+        const addToWelcomeProject = httpsCallable(functions, 'addUserToWelcomeProject');
+        await addToWelcomeProject();
+        
+        // Show welcome toast
+        toast.success("Welcome to Echoherence!", {
+          description: "We've added a sample project to help you get started.",
+          duration: 5000,
+        });
+        
+        // Refresh projects to show the welcome project
+        refreshProjects();
+      } catch (error) {
+        console.error('Error adding user to welcome project:', error);
+      }
+    };
+
+    // Check metadata to determine if this is a first-time sign-in
+    if (user && user.metadata.creationTime === user.metadata.lastSignInTime) {
+      handleFirstTimeSignIn();
+    }
+  }, [user]);
 
   const handleLogin = async (checkDomain = true) => {
     try {
