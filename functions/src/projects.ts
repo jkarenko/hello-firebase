@@ -22,6 +22,13 @@ export interface ProjectAccess {
   updatedAt: Timestamp;
 }
 
+export interface ProjectInvitation {
+  email: string;
+  isEditor: boolean;
+  status: "pending" | "delivered";
+  createdAt: Timestamp;
+}
+
 export async function getProjectAccess(projectId: string): Promise<ProjectAccess | null> {
   try {
     const doc = await db.collection("projects").doc(projectId).get();
@@ -95,7 +102,7 @@ export async function createProjectAccess(projectId: string, ownerUid: string, p
 export async function addProjectCollaborator(
   projectId: string,
   collaboratorUid: string,
-  role: "reader" | "editor" | "pending" = projectId === "sample_welcome_project" ? "reader" : "pending"
+  role: "reader" | "editor" | "pending"
 ): Promise<void> {
   try {
     const now = Timestamp.now();
@@ -547,76 +554,84 @@ export const listProjects = onCall(
   }
 );
 
-export const addCollaborator = onCall(async (request) => {
-  try {
-    // Ensure user is authenticated
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "User must be authenticated");
-    }
-
-    const {projectId, email} = request.data;
-    if (!projectId || !email) {
-      throw new HttpsError("invalid-argument", "Project ID and email are required");
-    }
-
-    // Check if user has access to the project
-    const projectAccess = await getProjectAccess(projectId);
-    if (!projectAccess) {
-      throw new HttpsError("not-found", "Project not found");
-    }
-
-    // Check if user is the owner
-    if (projectAccess.owner !== request.auth.uid) {
-      throw new HttpsError("permission-denied", "Only the project owner can add collaborators");
-    }
-
-    // Get user by email
+export const addCollaborator = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
     try {
-      const userRecord = await getAuth().getUserByEmail(email);
-
-      // Don't allow adding the owner as a collaborator
-      if (userRecord.uid === projectAccess.owner) {
-        throw new HttpsError("invalid-argument", "Cannot add project owner as a collaborator");
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
       }
 
-      // Add collaborator with pending role
-      await addProjectCollaborator(projectId, userRecord.uid);
+      const {projectId, email} = request.data;
+      if (!projectId || !email) {
+        throw new HttpsError("invalid-argument", "Project ID and email are required");
+      }
 
-      logger.info("Added collaborator to project", {
-        projectId,
-        collaboratorUid: userRecord.uid,
-        collaboratorEmail: email,
-        addedBy: request.auth.uid,
-        role: "pending",
-      });
+      // Check if user has access to modify the project
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      // Only owner can add collaborators
+      if (projectAccess.owner !== request.auth.uid) {
+        throw new HttpsError("permission-denied", "Only the project owner can add collaborators");
+      }
+
+      // Create invitation document
+      const invitationRef = db.collection("projects").doc(projectId).collection("invitations").doc(email);
+      const now = Timestamp.now();
+
+      const invitationData: ProjectInvitation = {
+        email,
+        isEditor: request.data.isEditor || false,
+        status: "pending",
+        createdAt: now,
+      };
+
+      // Save invitation
+      await invitationRef.set(invitationData);
+
+      try {
+        // Try to find user by email
+        const userRecord = await getAuth().getUserByEmail(email);
+
+        // If user exists, add them as a collaborator
+        await addProjectCollaborator(projectId, userRecord.uid, "pending");
+
+        // Update invitation status
+        await invitationRef.update({status: "delivered"});
+
+        logger.info("Added collaborator to project", {
+          projectId,
+          collaboratorUid: userRecord.uid,
+          collaboratorEmail: email,
+          addedBy: request.auth.uid,
+        });
+      } catch (error) {
+        // User doesn't exist - invitation will remain pending
+        logger.info("Created pending invitation", {
+          projectId,
+          email,
+          addedBy: request.auth.uid,
+        });
+      }
+
+      return {success: true};
     } catch (error) {
+      logger.error("Error in addCollaborator:", error);
       if (error instanceof HttpsError) {
         throw error;
       }
-      // Add a dummy write to make timing consistent with successful path
-      // Use a no-op update that doesn't actually change any data
-      await db.collection("projects").doc(projectId).update({
-        projectId: projectId,
-      });
-
-      // Log the error but don't expose it to the client
-      logger.info("Attempted to add non-existent user as collaborator:", {
-        projectId,
-        email,
-        addedBy: request.auth.uid,
-      });
+      throw new HttpsError("internal", "Failed to add collaborator");
     }
-
-    // Always return success to prevent email enumeration
-    return {success: true};
-  } catch (error) {
-    logger.error("Error in addCollaborator:", error);
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-    throw new HttpsError("internal", "Failed to add collaborator");
   }
-});
+);
 
 export const getCollaborators = onCall(
   {
@@ -648,24 +663,46 @@ export const getCollaborators = onCall(
         throw new HttpsError("permission-denied", "You don't have access to this project");
       }
 
-      // Get collaborator emails
+      // Get collaborator emails from both collaborators and invitations
+      const collaborators = new Map<string, {email: string; isEditor: boolean; isPending: boolean}>();
+
+      // First, get existing collaborators
       const collaboratorPromises = Object.entries(projectAccess.collaborators || {}).map(async ([uid, data]) => {
         try {
           const user = await getAuth().getUser(uid);
-          return {
-            email: user.email || "",
+          collaborators.set(user.email!, {
+            email: user.email!,
             isEditor: data.role === "editor",
             isPending: data.role === "pending",
-          };
+          });
         } catch (error) {
           logger.error("Error getting user info:", error);
-          return null;
+        }
+      });
+      await Promise.all(collaboratorPromises);
+
+      // Then, get pending invitations that don't have collaborator entries yet
+      const invitationsSnapshot = await db
+        .collection("projects")
+        .doc(projectId)
+        .collection("invitations")
+        .where("status", "==", "pending")
+        .get();
+
+      invitationsSnapshot.forEach((doc) => {
+        const invitation = doc.data() as ProjectInvitation;
+        // Only add if not already in collaborators
+        if (!collaborators.has(invitation.email)) {
+          collaborators.set(invitation.email, {
+            email: invitation.email,
+            isEditor: invitation.isEditor,
+            isPending: true,
+          });
         }
       });
 
-      return (await Promise.all(collaboratorPromises))
-        .filter((c): c is NonNullable<typeof c> => c !== null)
-        .sort((a, b) => a.email.localeCompare(b.email));
+      // Convert map to array and sort by email
+      return Array.from(collaborators.values()).sort((a, b) => a.email.localeCompare(b.email));
     } catch (error) {
       logger.error("Error getting collaborators:", error);
       if (error instanceof HttpsError) {
@@ -921,6 +958,90 @@ export const renameProject = onCall(
         throw error;
       }
       throw new HttpsError("internal", "Failed to rename project");
+    }
+  }
+);
+
+// Function to check and process pending invitations for a new user
+export async function processPendingInvitations(email: string, uid: string) {
+  try {
+    logger.info("Starting to process pending invitations", {email, uid});
+
+    // Query all projects for pending invitations for this email
+    const projectsRef = db.collection("projects");
+    const projects = await projectsRef.get();
+
+    logger.info("Found projects to check", {
+      totalProjects: projects.size,
+      projectIds: projects.docs.map((d) => d.id),
+    });
+
+    for (const projectDoc of projects.docs) {
+      const invitationRef = projectDoc.ref.collection("invitations").doc(email);
+      const invitation = await invitationRef.get();
+
+      logger.info("Checking invitation for project", {
+        projectId: projectDoc.id,
+        exists: invitation.exists,
+        data: invitation.exists ? invitation.data() : null,
+      });
+
+      if (invitation.exists && invitation.data()?.status === "pending") {
+        logger.info("Processing pending invitation", {
+          projectId: projectDoc.id,
+          email,
+          uid,
+          invitationData: invitation.data(),
+        });
+
+        try {
+          // Add user as pending collaborator
+          await addProjectCollaborator(projectDoc.id, uid, "pending");
+          logger.info("Added pending collaborator", {projectId: projectDoc.id, uid});
+
+          // Update invitation status
+          await invitationRef.update({status: "delivered"});
+          logger.info("Updated invitation status to delivered", {projectId: projectDoc.id, email});
+        } catch (error) {
+          logger.error("Error processing single invitation", {
+            error,
+            projectId: projectDoc.id,
+            email,
+            uid,
+          });
+          throw error;
+        }
+      }
+    }
+  } catch (error) {
+    logger.error("Error processing pending invitations:", error);
+    throw error;
+  }
+}
+
+export const processUserInvitations = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      // Process invitations for this user
+      await processPendingInvitations(request.auth.token.email || "", request.auth.uid);
+
+      return {success: true};
+    } catch (error) {
+      logger.error("Error processing user invitations:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to process invitations");
     }
   }
 );

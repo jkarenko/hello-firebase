@@ -59,6 +59,41 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Projects collection rules
+    match /projects/{projectId} {
+      // Helper function to check if user is owner
+      function isOwner() {
+        return request.auth != null && resource.data.owner == request.auth.uid;
+      }
+
+      // Helper function to check if user is collaborator
+      function isCollaborator() {
+        return request.auth != null && resource.data.collaborators[request.auth.uid] != null;
+      }
+
+      // Allow read if user is owner or collaborator
+      allow read: if isOwner() || isCollaborator();
+
+      // Invitations subcollection rules
+      match /invitations/{invitationId} {
+        // Allow read if user is owner or the invitation is for their email
+        allow read: if isOwner() || (
+          request.auth != null && 
+          resource.data.email == request.auth.token.email
+        );
+
+        // Allow create/update if user is owner
+        allow create, update: if isOwner() && 
+          request.resource.data.email is string &&
+          request.resource.data.isEditor is bool &&
+          request.resource.data.status in ['pending', 'delivered'] &&
+          request.resource.data.createdAt is timestamp;
+
+        // Allow delete if user is owner
+        allow delete: if isOwner();
+      }
+    }
+
     // Default deny all other collections
     match /{document=**} {
       allow read, write: if false;

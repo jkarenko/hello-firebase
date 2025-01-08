@@ -3,6 +3,10 @@ import * as logger from "firebase-functions/logger";
 import {getAuth} from "firebase-admin/auth";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {addProjectCollaborator} from "./projects";
+import {getFirestore} from "firebase-admin/firestore";
+import {processPendingInvitations} from "./projects";
+
+const db = getFirestore();
 
 // Middleware to verify Firebase ID token
 export const verifyToken = async (token: string) => {
@@ -76,7 +80,7 @@ export const addUserToWelcomeProject = onCall(
       }
 
       // Add user to the welcome project
-      await addProjectCollaborator("sample_welcome_project", request.auth.uid);
+      await addProjectCollaborator("sample_welcome_project", request.auth.uid, "reader");
 
       logger.info("Added user to welcome project", {
         userId: request.auth.uid,
@@ -93,3 +97,28 @@ export const addUserToWelcomeProject = onCall(
     }
   }
 );
+
+export const onUserCreated = onRequest(async (request, response) => {
+  try {
+    const {email, uid} = request.body;
+
+    if (!email || !uid) {
+      response.status(400).send("Email and UID are required");
+      return;
+    }
+
+    // Create user document
+    await db.collection("users").doc(uid).set({
+      uid,
+      welcomed: false,
+    });
+
+    // Process any pending invitations for this user
+    await processPendingInvitations(email, uid);
+
+    response.status(200).send("User created successfully");
+  } catch (error) {
+    logger.error("Error in onUserCreated:", error);
+    response.status(500).send("Internal server error");
+  }
+});

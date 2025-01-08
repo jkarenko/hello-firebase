@@ -63,8 +63,13 @@ export async function handleFirstTimeUser(user: User): Promise<void> {
 
     // If user hasn't been welcomed yet
     if (!settings.welcomed) {
-      // Add to welcome project
       const functions = getFirebaseFunctions();
+
+      // Process any pending invitations
+      const processInvitations = httpsCallable(functions, "processUserInvitations");
+      await processInvitations();
+
+      // Add to welcome project
       const addToWelcomeProject = httpsCallable(functions, "addUserToWelcomeProject");
       await addToWelcomeProject();
 
