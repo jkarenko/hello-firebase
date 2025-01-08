@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure, Badge } from "@nextui-org/react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure } from "@nextui-org/react";
 import { getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
