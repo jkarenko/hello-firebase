@@ -1,23 +1,67 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /projects/{projectId} {
-      // Allow read if user is owner or collaborator
-      allow read: if request.auth != null &&
-        (resource.data.owner == request.auth.uid ||
-         resource.data.collaborators[request.auth.uid] != null);
-      
-      // Allow create if user is authenticated (they become the owner)
-      allow create: if request.auth != null &&
-        request.resource.data.owner == request.auth.uid;
-      
-      // Allow update if user is owner
-      allow update: if request.auth != null &&
-        resource.data.owner == request.auth.uid;
-      
-      // Allow delete if user is owner
-      allow delete: if request.auth != null &&
-        resource.data.owner == request.auth.uid;
+    // Users collection rules
+    match /users/{userId} {
+      // Allow read if the user is authenticated and the document ID matches their UID
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Allow create if:
+      // 1. User is authenticated
+      // 2. Document ID matches their UID
+      // 3. Data follows the correct structure
+      allow create: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.welcomed is bool
+        && (
+          !('preferences' in request.resource.data) || (
+            request.resource.data.preferences is map
+            && (
+              !('theme' in request.resource.data.preferences) 
+              || request.resource.data.preferences.theme in ['light', 'dark']
+            )
+            && (
+              !('notifications' in request.resource.data.preferences) 
+              || request.resource.data.preferences.notifications is bool
+            )
+          )
+        );
+
+      // Allow update if:
+      // 1. User is authenticated
+      // 2. Document ID matches their UID
+      // 3. Not trying to change the uid field
+      // 4. Data follows the correct structure
+      allow update: if request.auth != null 
+        && request.auth.uid == userId
+        && (!('uid' in request.resource.data) || request.resource.data.uid == userId)
+        && (
+          !('welcomed' in request.resource.data) 
+          || request.resource.data.welcomed is bool
+        )
+        && (
+          !('preferences' in request.resource.data) || (
+            request.resource.data.preferences is map
+            && (
+              !('theme' in request.resource.data.preferences) 
+              || request.resource.data.preferences.theme in ['light', 'dark']
+            )
+            && (
+              !('notifications' in request.resource.data.preferences) 
+              || request.resource.data.preferences.notifications is bool
+            )
+          )
+        );
+
+      // No delete allowed
+      allow delete: if false;
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 } 
