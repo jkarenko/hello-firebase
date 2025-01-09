@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from "react";
+import {useState, useEffect, useCallback, useRef} from "react";
 import {
   collection,
   query,
@@ -38,6 +38,7 @@ export const useComments = (projectId: string, versionFilename?: string) => {
   const [comments, setComments] = useState<CommentWithUserInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const initialLoadRef = useRef(true);
 
   const db = getFirestore();
   const auth = getAuth();
@@ -73,7 +74,17 @@ export const useComments = (projectId: string, versionFilename?: string) => {
             updatedAt: comment.updatedAt ? Timestamp.fromMillis(comment.updatedAt) : undefined,
             resolvedAt: comment.resolvedAt ? Timestamp.fromMillis(comment.resolvedAt) : undefined,
           }));
-          setComments(commentsWithTimestamps);
+
+          // Only update UI on initial load or for new comments
+          if (initialLoadRef.current) {
+            setComments(commentsWithTimestamps);
+            initialLoadRef.current = false;
+          } else {
+            setComments((prev) => {
+              const newComments = commentsWithTimestamps.filter((c) => !prev.some((p) => p.id === c.id));
+              return [...prev, ...newComments];
+            });
+          }
           setLoading(false);
           setError(null);
         } catch (err) {
@@ -121,6 +132,27 @@ export const useComments = (projectId: string, versionFilename?: string) => {
     }
 
     try {
+      // Optimistically update local state
+      setComments((prevComments) =>
+        prevComments.map((comment) =>
+          comment.id === commentId
+            ? {
+                ...comment,
+                ...data,
+                resolvedByUser:
+                  data.resolved !== undefined
+                    ? data.resolved
+                      ? {
+                          displayName: auth.currentUser?.displayName || "Unknown User",
+                          photoURL: auth.currentUser?.photoURL || undefined,
+                        }
+                      : undefined
+                    : comment.resolvedByUser,
+              }
+            : comment
+        )
+      );
+
       const commentRef = doc(db, "projects", projectId, "comments", commentId);
       const updateData: Partial<Comment> = {
         ...data,

@@ -12,6 +12,11 @@ initializeFirebase();
 
 const root = createRoot(document.getElementById('root')!);
 
+// Create a container for modals outside the root
+const modalContainer = document.createElement('div');
+modalContainer.id = 'modal-container';
+document.body.appendChild(modalContainer);
+
 // Disable StrictMode in development to prevent double mounting
 const isDevelopment = process.env.NODE_ENV === 'development';
 

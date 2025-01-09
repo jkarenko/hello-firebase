@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure, Divider } from "@nextui-org/react";
 import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
-import { PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PencilIcon } from '@heroicons/react/24/outline';
 import { AudioCache } from '../utils/AudioCache';
 import FileUpload from './FileUpload';
 import ShareProject from './ShareProject';
@@ -554,46 +554,37 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
         {/* Rename Modal */}
         <Modal 
           isOpen={renameModal.isOpen} 
-          onClose={renameModal.onClose}
-          size="sm"
-          isDismissable={true}
-          hideCloseButton={true}
+          onOpenChange={renameModal.onOpenChange}
+          placement="center"
         >
           <ModalContent>
-            <ModalHeader className="flex flex-col gap-1">
-              <div className="flex justify-between items-center w-full">
-                <h2 className="text-lg">Rename Project</h2>
-                <Button
-                  isIconOnly
-                  variant="light"
-                  onPress={renameModal.onClose}
-                  className="absolute right-2 top-2"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                </Button>
-              </div>
-            </ModalHeader>
-            <ModalBody>
-              <Input
-                label="Project Name"
-                placeholder="Enter project name"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                autoFocus
-              />
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="light" onPress={renameModal.onClose}>
-                Cancel
-              </Button>
-              <Button 
-                color="primary" 
-                onPress={handleRename}
-                isDisabled={!newProjectName.trim() || newProjectName.trim() === project?.name}
-              >
-                Rename
-              </Button>
-            </ModalFooter>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">Rename Project</ModalHeader>
+                <ModalBody>
+                  <Input
+                    label="Project Name"
+                    placeholder="Enter new project name"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button color="danger" variant="light" onPress={onClose}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    color="primary" 
+                    onPress={() => {
+                      handleRename();
+                      onClose();
+                    }}
+                  >
+                    Save
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
           </ModalContent>
         </Modal>
 
