@@ -78,26 +78,26 @@ service cloud.firestore {
     match /projects/{projectId} {
       // Helper function to check if user is owner
       function isOwner() {
-        let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
-        return request.auth != null && projectData.owner == request.auth.uid;
+        let projectPath = /databases/$(database)/documents/projects/$(projectId);
+        return request.auth != null && exists(projectPath) && get(projectPath).data.owner == request.auth.uid;
       }
 
       // Helper function to check if user is collaborator
       function isCollaborator() {
-        let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
-        return request.auth != null && 
-               projectData.collaborators != null && 
-               projectData.collaborators[request.auth.uid] != null;
+        let projectPath = /databases/$(database)/documents/projects/$(projectId);
+        return request.auth != null && exists(projectPath) && 
+               get(projectPath).data.collaborators != null && 
+               get(projectPath).data.collaborators[request.auth.uid] != null;
       }
 
       // Helper function to check if user has editor role
       function isEditor() {
-        let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
-        return request.auth != null && (
-          isOwner() || (
-            projectData.collaborators != null && 
-            projectData.collaborators[request.auth.uid] != null &&
-            projectData.collaborators[request.auth.uid].role == "editor"
+        let projectPath = /databases/$(database)/documents/projects/$(projectId);
+        return request.auth != null && exists(projectPath) && (
+          get(projectPath).data.owner == request.auth.uid || (
+            get(projectPath).data.collaborators != null && 
+            get(projectPath).data.collaborators[request.auth.uid] != null &&
+            get(projectPath).data.collaborators[request.auth.uid].role == "editor"
           )
         );
       }
@@ -111,7 +111,7 @@ service cloud.firestore {
         allow read: if request.auth != null && (isOwner() || isCollaborator());
 
         // Allow create if user is owner or editor
-        allow create: if (isOwner() || isEditor()) &&
+        allow create: if request.auth != null && (isOwner() || isEditor()) &&
           request.resource.data.content is string &&
           request.resource.data.createdAt is timestamp &&
           request.resource.data.createdBy == request.auth.uid &&
@@ -119,7 +119,7 @@ service cloud.firestore {
           request.resource.data.startTimestamp is number &&
           request.resource.data.endTimestamp is number &&
           request.resource.data.endTimestamp >= request.resource.data.startTimestamp &&
-          request.resource.data.resolved is bool;
+          request.resource.data.resolved == false;
 
         // Allow update if user is the comment creator (for content updates)
         allow update: if request.auth != null && (

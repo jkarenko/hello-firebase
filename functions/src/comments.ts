@@ -88,8 +88,8 @@ const validateUserPermissions = async (
     return {isAllowed: true, role: "owner"};
   }
 
-  const collaboratorRole = project.collaborators?.[userId];
-  if (collaboratorRole === "editor") {
+  const collaborator = project.collaborators?.[userId];
+  if (collaborator?.role === "editor") {
     return {isAllowed: true, role: "editor"};
   }
 
