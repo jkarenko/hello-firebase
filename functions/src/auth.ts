@@ -80,7 +80,7 @@ export const addUserToWelcomeProject = onCall(
       }
 
       // Add user to the welcome project
-      await addProjectCollaborator("sample_welcome_project", request.auth.uid, "reader");
+      await addProjectCollaborator("sample_welcome_project", request.auth.uid, "editor");
 
       logger.info("Added user to welcome project", {
         userId: request.auth.uid,
