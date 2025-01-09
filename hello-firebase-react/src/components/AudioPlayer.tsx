@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure } from "@nextui-org/react";
+import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure, Divider } from "@nextui-org/react";
 import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
 import { PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { AudioCache } from '../utils/AudioCache';
 import FileUpload from './FileUpload';
 import ShareProject from './ShareProject';
+import { CommentList } from './CommentList';
+import { CommentForm } from './CommentForm';
 import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { getDisplayName } from '../utils/audio';
+import { CommentTimeRange } from '../types/comments';
 
 interface Version {
   filename: string;
@@ -43,6 +46,10 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   const [error, setError] = useState<string | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
   const renameModal = useDisclosure();
+  const [commentTimeRange, setCommentTimeRange] = useState<CommentTimeRange>({
+    start: 0,
+    end: 0
+  });
 
   const audioContext = useRef<AudioContext | null>(null);
   const sourceNode = useRef<AudioBufferSourceNode | null>(null);
@@ -409,6 +416,24 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     }
   }, [project]);
 
+  // Update comment time range when seeking or playing
+  useEffect(() => {
+    setCommentTimeRange(prev => ({
+      ...prev,
+      start: currentTime,
+      end: currentTime
+    }));
+  }, [currentTime]);
+
+  const handleTimeRangeClick = useCallback((range: CommentTimeRange) => {
+    if (isPlaying) {
+      stopAudio();
+    }
+    offset.current = range.start;
+    setCurrentTime(range.start);
+    updateDisplay();
+  }, [isPlaying, stopAudio, updateDisplay]);
+
   if (loading) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
@@ -647,6 +672,27 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           <div className="flex justify-center">
             <Spinner color="primary" />
           </div>
+        )}
+
+        {/* Comments section */}
+        {selectedVersion && (
+          <>
+            <Divider className="my-4" />
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold">Comments</h2>
+              <CommentForm
+                projectId={projectId}
+                versionFilename={selectedVersion}
+                currentTimeRange={commentTimeRange}
+                onCommentCreate={() => {}}
+              />
+              <CommentList
+                projectId={projectId}
+                versionFilename={selectedVersion}
+                onTimeRangeClick={handleTimeRangeClick}
+              />
+            </div>
+          </>
         )}
       </CardBody>
     </Card>
