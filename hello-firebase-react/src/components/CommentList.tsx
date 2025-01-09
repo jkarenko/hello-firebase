@@ -81,7 +81,7 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
               <div className="flex items-start gap-4">
                 <Avatar
                   src={comment.createdByUser.photoURL || undefined}
-                  name={comment.createdByUser.displayName}
+                  name={comment.createdByUser.displayName || ''}
                   size="sm"
                 />
                 <div className="flex-grow">

@@ -112,7 +112,8 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
                   isInvisible={pendingCount === 0}
                 >
                   <Avatar 
-                    name={user.email || ''} 
+                    src={user.photoURL || undefined}
+                    name={user.displayName || user.email || ''} 
                     showFallback
                     size="sm"
                     isBordered
