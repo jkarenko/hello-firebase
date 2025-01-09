@@ -15,3 +15,4 @@ initializeApp({
 export * from "./player";
 export * from "./auth";
 export * from "./projects";
+export * from "./comments";
