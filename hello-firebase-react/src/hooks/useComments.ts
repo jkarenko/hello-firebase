@@ -39,6 +39,8 @@ export const useComments = (projectId: string, versionFilename?: string) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const initialLoadRef = useRef(true);
+  const lastRequestIdRef = useRef(0);
+  const pendingUpdatesRef = useRef<Set<string>>(new Set()); // Track pending updates
 
   const db = getFirestore();
   const auth = getAuth();
@@ -62,12 +64,20 @@ export const useComments = (projectId: string, versionFilename?: string) => {
       q,
       async () => {
         try {
+          const requestId = ++lastRequestIdRef.current;
           const getCommentsFn = httpsCallable<{projectId: string; versionFilename?: string}, GetCommentsResponse>(
             functions,
             "getComments"
           );
 
           const result = await getCommentsFn({projectId, versionFilename});
+
+          // Check if this is still the most recent request
+          if (requestId !== lastRequestIdRef.current) {
+            console.debug("Ignoring stale comments update", {requestId, currentId: lastRequestIdRef.current});
+            return;
+          }
+
           const commentsWithTimestamps = result.data.comments.map((comment) => ({
             ...comment,
             createdAt: Timestamp.fromMillis(comment.createdAt),
@@ -75,18 +85,30 @@ export const useComments = (projectId: string, versionFilename?: string) => {
             resolvedAt: comment.resolvedAt ? Timestamp.fromMillis(comment.resolvedAt) : undefined,
           }));
 
-          // Only update UI on initial load or for new comments
-          if (initialLoadRef.current) {
-            setComments(commentsWithTimestamps);
-            initialLoadRef.current = false;
-          } else {
-            setComments((prev) => {
-              const newComments = commentsWithTimestamps.filter((c) => !prev.some((p) => p.id === c.id));
-              return [...prev, ...newComments];
+          // Merge server updates with local state, preserving optimistic updates
+          setComments((prevComments) => {
+            const updatedComments: CommentWithUserInfo[] = [...commentsWithTimestamps];
+
+            // Keep optimistic updates for comments that are being modified
+            prevComments.forEach((prevComment) => {
+              if (pendingUpdatesRef.current.has(prevComment.id)) {
+                const index = updatedComments.findIndex((c) => c.id === prevComment.id);
+                if (index !== -1) {
+                  updatedComments[index] = prevComment;
+                }
+              }
             });
+
+            return updatedComments;
+          });
+
+          // Only mark as not initial load after first successful update
+          if (initialLoadRef.current) {
+            initialLoadRef.current = false;
           }
-          setLoading(false);
+
           setError(null);
+          setLoading(false);
         } catch (err) {
           console.error("Failed to load comments:", err);
           setError("Failed to load comments");
@@ -118,7 +140,19 @@ export const useComments = (projectId: string, versionFilename?: string) => {
 
     try {
       const commentsRef = collection(db, "projects", projectId, "comments");
-      await addDoc(commentsRef, commentData);
+      const docRef = await addDoc(commentsRef, commentData);
+
+      // Optimistically add the new comment to the list
+      const newComment: CommentWithUserInfo = {
+        id: docRef.id,
+        ...commentData,
+        createdByUser: {
+          displayName: auth.currentUser.displayName || "Unknown User",
+          photoURL: auth.currentUser.photoURL || undefined,
+        },
+      };
+
+      setComments((prev) => [newComment, ...prev]);
     } catch (err) {
       setError("Failed to create comment");
       throw err;
@@ -128,44 +162,90 @@ export const useComments = (projectId: string, versionFilename?: string) => {
   // Update a comment
   const updateComment = async (commentId: string, data: UpdateCommentData) => {
     if (!auth.currentUser) {
-      throw new Error("Must be logged in to update comment");
+      throw new Error("Must be logged in to comment");
     }
 
     try {
-      // Optimistically update local state
-      setComments((prevComments) =>
-        prevComments.map((comment) =>
-          comment.id === commentId
-            ? {
-                ...comment,
-                ...data,
-                resolvedByUser:
-                  data.resolved !== undefined
-                    ? data.resolved
-                      ? {
-                          displayName: auth.currentUser?.displayName || "Unknown User",
-                          photoURL: auth.currentUser?.photoURL || undefined,
-                        }
-                      : undefined
-                    : comment.resolvedByUser,
-              }
-            : comment
-        )
-      );
-
       const commentRef = doc(db, "projects", projectId, "comments", commentId);
-      const updateData: Partial<Comment> = {
-        ...data,
-        updatedAt: Timestamp.now(),
-      };
 
-      if (data.resolved !== undefined) {
-        updateData.resolvedBy = auth.currentUser.uid;
-        updateData.resolvedAt = Timestamp.now();
+      // Get the current comment data first
+      const currentComment = comments.find((c) => c.id === commentId);
+      if (!currentComment) {
+        throw new Error("Comment not found");
       }
 
-      await updateDoc(commentRef, updateData);
+      // Add to pending updates
+      pendingUpdatesRef.current.add(commentId);
+
+      if (data.resolved !== undefined) {
+        // For resolution status updates
+        const updateData = {
+          content: currentComment.content,
+          createdAt: currentComment.createdAt,
+          createdBy: currentComment.createdBy,
+          versionFilename: currentComment.versionFilename,
+          startTimestamp: currentComment.startTimestamp,
+          endTimestamp: currentComment.endTimestamp,
+          resolved: data.resolved,
+          resolvedBy: auth.currentUser.uid,
+          resolvedAt: Timestamp.now(),
+        };
+
+        // First update local state
+        setComments((prevComments) =>
+          prevComments.map((comment) =>
+            comment.id === commentId
+              ? {
+                  ...comment,
+                  ...updateData,
+                  resolvedByUser: data.resolved
+                    ? {
+                        displayName: auth.currentUser?.displayName || "Unknown User",
+                        photoURL: auth.currentUser?.photoURL || undefined,
+                      }
+                    : undefined,
+                }
+              : comment
+          )
+        );
+
+        // Then update the database
+        await updateDoc(commentRef, updateData);
+      } else if (data.content) {
+        // For content updates
+        const updateData = {
+          content: data.content,
+          updatedAt: Timestamp.now(),
+          createdAt: currentComment.createdAt,
+          createdBy: currentComment.createdBy,
+          versionFilename: currentComment.versionFilename,
+          startTimestamp: currentComment.startTimestamp,
+          endTimestamp: currentComment.endTimestamp,
+          resolved: currentComment.resolved,
+        };
+
+        // First update local state
+        setComments((prevComments) =>
+          prevComments.map((comment) =>
+            comment.id === commentId
+              ? {
+                  ...comment,
+                  ...updateData,
+                }
+              : comment
+          )
+        );
+
+        // Then update the database
+        await updateDoc(commentRef, updateData);
+      }
+
+      // Remove from pending updates after successful update
+      pendingUpdatesRef.current.delete(commentId);
     } catch (err) {
+      // Remove from pending updates on error
+      pendingUpdatesRef.current.delete(commentId);
+      console.error("Failed to update comment:", err);
       setError("Failed to update comment");
       throw err;
     }

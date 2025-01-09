@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Card, CardBody, Avatar, Button, Select, SelectItem } from "@nextui-org/react";
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { Card, CardBody, Avatar, Button, Select, SelectItem, Spinner } from "@nextui-org/react";
+import { CheckCircleIcon, XCircleIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
 import { useComments } from '../hooks/useComments';
 import { CommentWithUserInfo, CommentFilterBy, CommentSortBy, CommentTimeRange } from '../types/comments';
 import { formatDistanceToNow } from 'date-fns';
 import { getAuth } from 'firebase/auth';
+import { toast } from 'sonner';
 
 interface CommentListProps {
   projectId: string;
@@ -35,8 +36,10 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
   const handleResolve = async (comment: CommentWithUserInfo) => {
     try {
       await updateComment(comment.id, { resolved: !comment.resolved });
+      toast.success(comment.resolved ? 'Comment unresolved' : 'Comment resolved');
     } catch (err) {
       console.error('Failed to update comment:', err);
+      toast.error('Failed to update comment status');
     }
   };
 
@@ -46,8 +49,26 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  if (loading) return <div>Loading comments...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <Spinner label="Loading comments..." color="primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full bg-danger-50">
+        <CardBody className="text-center text-danger">
+          <p>Error: {error}</p>
+          <Button color="primary" variant="flat" className="mt-2" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </CardBody>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -74,58 +95,68 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
         </Select>
       </div>
 
-      <div className="space-y-3">
-        {filteredAndSortedComments.map((comment) => (
-          <Card key={comment.id} className="w-full">
-            <CardBody>
-              <div className="flex items-start gap-4">
-                <Avatar
-                  src={comment.createdByUser.photoURL || undefined}
-                  name={comment.createdByUser.displayName || ''}
-                  size="sm"
-                />
-                <div className="flex-grow">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold">{comment.createdByUser.displayName}</span>
-                    <span className="text-sm text-gray-500">
-                      {formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true })}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="light"
-                      onClick={() => onTimeRangeClick({
-                        start: comment.startTimestamp,
-                        end: comment.endTimestamp
-                      })}
-                    >
-                      {formatTimestamp(comment.startTimestamp)}
-                      {comment.startTimestamp !== comment.endTimestamp && 
-                        ` - ${formatTimestamp(comment.endTimestamp)}`}
-                    </Button>
-                  </div>
-                  <p className="text-sm mb-2">{comment.content}</p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      color={comment.resolved ? "success" : "default"}
-                      variant="flat"
-                      onClick={() => handleResolve(comment)}
-                      startContent={comment.resolved ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
-                    >
-                      {comment.resolved ? 'Resolved' : 'Mark Resolved'}
-                    </Button>
-                    {comment.resolved && comment.resolvedByUser && (
-                      <span className="text-xs text-gray-500">
-                        by {comment.resolvedByUser.displayName}
+      {filteredAndSortedComments.length === 0 ? (
+        <Card className="w-full">
+          <CardBody className="text-center py-8">
+            <ChatBubbleLeftIcon className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+            <p className="text-gray-600">No comments yet</p>
+            <p className="text-sm text-gray-400">Be the first to add a comment!</p>
+          </CardBody>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filteredAndSortedComments.map((comment) => (
+            <Card key={comment.id} className="w-full">
+              <CardBody>
+                <div className="flex items-start gap-4">
+                  <Avatar
+                    src={comment.createdByUser.photoURL || undefined}
+                    name={comment.createdByUser.displayName || ''}
+                    size="sm"
+                  />
+                  <div className="flex-grow">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold">{comment.createdByUser.displayName}</span>
+                      <span className="text-sm text-gray-500">
+                        {formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true })}
                       </span>
-                    )}
+                      <Button
+                        size="sm"
+                        variant="light"
+                        onClick={() => onTimeRangeClick({
+                          start: comment.startTimestamp,
+                          end: comment.endTimestamp
+                        })}
+                      >
+                        {formatTimestamp(comment.startTimestamp)}
+                        {comment.startTimestamp !== comment.endTimestamp && 
+                          ` - ${formatTimestamp(comment.endTimestamp)}`}
+                      </Button>
+                    </div>
+                    <p className="text-sm mb-2">{comment.content}</p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        color={comment.resolved ? "success" : "default"}
+                        variant="flat"
+                        onClick={() => handleResolve(comment)}
+                        startContent={comment.resolved ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
+                      >
+                        {comment.resolved ? 'Resolved' : 'Mark Resolved'}
+                      </Button>
+                      {comment.resolved && comment.resolvedByUser && (
+                        <span className="text-xs text-gray-500">
+                          by {comment.resolvedByUser.displayName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardBody>
-          </Card>
-        ))}
-      </div>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }; 

@@ -11,6 +11,7 @@ import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { getDisplayName } from '../utils/audio';
 import { CommentTimeRange } from '../types/comments';
+import { debounce } from 'lodash';
 
 interface Version {
   filename: string;
@@ -35,6 +36,8 @@ interface GetProjectResponse {
   versions: Version[];
   owner: string;
 }
+
+const COMMENT_TIME_UPDATE_DELAY = 100; // 100ms debounce delay
 
 const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   const [project, setProject] = useState<Project | null>(null);
@@ -417,13 +420,23 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   }, [project]);
 
   // Update comment time range when seeking or playing
+  const debouncedSetCommentTimeRange = useMemo(
+    () => debounce((time: number) => {
+      setCommentTimeRange(prev => ({
+        ...prev,
+        start: time,
+        end: time
+      }));
+    }, COMMENT_TIME_UPDATE_DELAY),
+    []
+  );
+
   useEffect(() => {
-    setCommentTimeRange(prev => ({
-      ...prev,
-      start: currentTime,
-      end: currentTime
-    }));
-  }, [currentTime]);
+    debouncedSetCommentTimeRange(currentTime);
+    return () => {
+      debouncedSetCommentTimeRange.cancel();
+    };
+  }, [currentTime, debouncedSetCommentTimeRange]);
 
   const handleTimeRangeClick = useCallback((range: CommentTimeRange) => {
     if (isPlaying) {
@@ -433,6 +446,11 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     setCurrentTime(range.start);
     updateDisplay();
   }, [isPlaying, stopAudio, updateDisplay]);
+
+  // Add this function to handle comment creation
+  const handleCommentCreate = useCallback(() => {
+    // No-op - we don't want to pause playback anymore
+  }, []);
 
   if (loading) {
     return (
@@ -675,7 +693,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
                 projectId={projectId}
                 versionFilename={selectedVersion}
                 currentTimeRange={commentTimeRange}
-                onCommentCreate={() => {}}
+                onCommentCreate={handleCommentCreate}
               />
               <CommentList
                 projectId={projectId}

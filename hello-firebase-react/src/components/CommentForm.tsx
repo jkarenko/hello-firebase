@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Button, Textarea } from "@nextui-org/react";
+import { Button, Textarea, Chip } from "@nextui-org/react";
 import { useComments } from '../hooks/useComments';
 import { CommentTimeRange } from '../types/comments';
+import { toast } from 'sonner';
 
 interface CommentFormProps {
   projectId: string;
@@ -13,23 +14,31 @@ interface CommentFormProps {
 export const CommentForm = ({ projectId, versionFilename, currentTimeRange, onCommentCreate }: CommentFormProps) => {
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { createComment } = useComments(projectId, versionFilename);
 
   const handleSubmit = async () => {
-    if (!content.trim()) return;
+    const trimmedContent = content.trim();
+    if (!trimmedContent) return;
 
     setIsSubmitting(true);
+    setError(null);
+
     try {
       await createComment({
-        content: content.trim(),
+        content: trimmedContent,
         versionFilename,
         startTimestamp: currentTimeRange.start,
         endTimestamp: currentTimeRange.end,
       });
+      
       setContent('');
+      toast.success('Comment added successfully');
       onCommentCreate();
     } catch (err) {
       console.error('Failed to create comment:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create comment');
+      toast.error('Failed to create comment');
     } finally {
       setIsSubmitting(false);
     }
@@ -51,20 +60,32 @@ export const CommentForm = ({ projectId, versionFilename, currentTimeRange, onCo
       <Textarea
         placeholder="Add a comment... Use @email to mention someone"
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(e) => {
+          setContent(e.target.value);
+          setError(null);
+        }}
         minRows={2}
         maxRows={5}
+        isDisabled={isSubmitting}
+        classNames={{
+          input: error ? "border-danger" : ""
+        }}
       />
+      {error && (
+        <Chip color="danger" variant="flat" size="sm">
+          {error}
+        </Chip>
+      )}
       <div className="flex justify-end">
         <Button
           color="primary"
           onClick={handleSubmit}
           isLoading={isSubmitting}
-          isDisabled={!content.trim()}
+          isDisabled={!content.trim() || isSubmitting}
         >
           Add Comment
         </Button>
       </div>
     </div>
   );
-}; 
+} 
