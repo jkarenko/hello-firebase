@@ -152,15 +152,15 @@ const FileUpload = ({ projectId, onUploadComplete, existingVersions }: FileUploa
         
         <div className="mb-4">
           <p className="text-lg mb-2">
-            {showSuccess ? 'Upload successful!' : 'Drag and drop your audio file here'}
+            {showSuccess ? 'Upload successful!' : 'Drag your audio file here'}
           </p>
           {!showSuccess && (
             <>
+              <p className="text-xs text-gray-400 mb-2">
+                {supportedFormatsDisplay}
+              </p>
               <p className="text-sm text-gray-500 mb-1">
                 or
-              </p>
-              <p className="text-xs text-gray-400 mb-2">
-                Supported formats: {supportedFormatsDisplay}
               </p>
             </>
           )}
