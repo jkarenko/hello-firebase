@@ -78,53 +78,37 @@ service cloud.firestore {
     match /projects/{projectId} {
       // Helper function to check if user is owner
       function isOwner() {
-        let projectData = resource != null ? resource.data : null;
-        return request.auth != null && projectData != null && projectData.owner == request.auth.uid;
+        let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
+        return request.auth != null && projectData.owner == request.auth.uid;
       }
 
       // Helper function to check if user is collaborator
       function isCollaborator() {
-        let projectData = resource != null ? resource.data : null;
-        return request.auth != null && projectData != null && projectData.collaborators != null && projectData.collaborators[request.auth.uid] != null;
+        let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
+        return request.auth != null && 
+               projectData.collaborators != null && 
+               projectData.collaborators[request.auth.uid] != null;
+      }
+
+      // Helper function to check if user has editor role
+      function isEditor() {
+        let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
+        return request.auth != null && (
+          isOwner() || (
+            projectData.collaborators != null && 
+            projectData.collaborators[request.auth.uid] != null &&
+            projectData.collaborators[request.auth.uid].role == "editor"
+          )
+        );
       }
 
       // Allow read if user is owner or collaborator
       allow read: if isOwner() || isCollaborator();
 
-      // Invitations subcollection rules
-      match /invitations/{invitationId} {
-        // Allow read if user is owner or the invitation is for their email
-        allow read: if isOwner() || (
-          request.auth != null && 
-          resource.data.email == request.auth.token.email
-        );
-
-        // Allow create/update if user is owner
-        allow create, update: if isOwner() && 
-          request.resource.data.email is string &&
-          request.resource.data.isEditor is bool &&
-          request.resource.data.status in ['pending', 'delivered'] &&
-          request.resource.data.createdAt is timestamp;
-
-        // Allow delete if user is owner
-        allow delete: if isOwner();
-      }
-
       // Comments subcollection rules
       match /comments/{commentId} {
-        // Helper function to check if user has editor role
-        function isEditor() {
-          let projectDoc = get(/databases/$(database)/documents/projects/$(projectId));
-          let projectData = projectDoc != null ? projectDoc.data : null;
-          return request.auth != null && projectData != null && (
-            (projectData.collaborators != null && 
-            projectData.collaborators[request.auth.uid] == 'editor') || 
-            projectData.owner == request.auth.uid
-          );
-        }
-
         // Allow read if user is authenticated and has access to the parent project
-        allow read: if request.auth != null && exists(/databases/$(database)/documents/projects/$(projectId));
+        allow read: if request.auth != null && (isOwner() || isCollaborator());
 
         // Allow create if user is owner or editor
         allow create: if (isOwner() || isEditor()) &&
