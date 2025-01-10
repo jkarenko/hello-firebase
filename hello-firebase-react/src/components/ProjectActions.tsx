@@ -81,10 +81,11 @@ export const ProjectActions = ({
         <DropdownTrigger>
           <Button 
             isIconOnly
-            variant="light"
+            variant="flat"
+            className="data-[hover]:bg-default-100"
             aria-label="Project actions"
           >
-            <EllipsisVerticalIcon className="w-5 h-5" />
+            <EllipsisVerticalIcon className="w-6 h-6" />
           </Button>
         </DropdownTrigger>
         <DropdownMenu aria-label="Project actions">
