@@ -1045,3 +1045,70 @@ export const processUserInvitations = onCall(
     }
   }
 );
+
+export const deleteVersion = onCall(async (request) => {
+  const {projectId, versionFilename} = request.data;
+  const userId = request.auth?.uid;
+
+  if (!userId) {
+    throw new HttpsError("unauthenticated", "Must be logged in to delete version");
+  }
+
+  if (!projectId || !versionFilename) {
+    throw new HttpsError("invalid-argument", "Missing required fields");
+  }
+
+  const db = getFirestore();
+  const storage = getStorage();
+
+  try {
+    // Get project document to check permissions first
+    const projectRef = db.collection("projects").doc(projectId);
+    const projectDoc = await projectRef.get();
+
+    if (!projectDoc.exists) {
+      throw new HttpsError("not-found", "Project not found");
+    }
+
+    const projectData = projectDoc.data();
+    if (!projectData) {
+      throw new HttpsError("not-found", "Project data not found");
+    }
+
+    // Check if user has permission to delete version
+    if (projectData.owner !== userId) {
+      throw new HttpsError("permission-denied", "Only project owner can delete versions");
+    }
+
+    // Delete the file from storage first
+    const bucket = storage.bucket();
+    const file = bucket.file(`audio/${projectId}/${versionFilename}`);
+    const [exists] = await file.exists();
+
+    if (!exists) {
+      throw new HttpsError("not-found", "Version file not found in storage");
+    }
+
+    await file.delete();
+
+    // Now delete all associated comments in a transaction
+    await db.runTransaction(async (transaction) => {
+      // Get all comments for this version
+      const commentsRef = db.collection("projects").doc(projectId).collection("comments");
+      const commentsQuery = await transaction.get(commentsRef.where("versionFilename", "==", versionFilename));
+
+      // Delete all comments
+      commentsQuery.forEach((doc) => {
+        transaction.delete(doc.ref);
+      });
+    });
+
+    return {
+      success: true,
+      message: "Version and associated comments deleted successfully",
+    };
+  } catch (err) {
+    logger.error("Failed to delete version:", err);
+    throw new HttpsError("internal", "Failed to delete version");
+  }
+});

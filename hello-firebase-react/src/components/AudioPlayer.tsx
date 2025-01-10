@@ -12,6 +12,7 @@ import { httpsCallable } from 'firebase/functions';
 import { getDisplayName } from '../utils/audio';
 import { CommentTimeRange } from '../types/comments';
 import { debounce } from 'lodash';
+import { DeleteVersionButton } from './DeleteVersionButton';
 
 interface Version {
   filename: string;
@@ -53,6 +54,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     start: 0,
     end: 0
   });
+  const [versionCommentCount, setVersionCommentCount] = useState(0);
 
   const audioContext = useRef<AudioContext | null>(null);
   const sourceNode = useRef<AudioBufferSourceNode | null>(null);
@@ -452,6 +454,11 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     // No-op - we don't want to pause playback anymore
   }, []);
 
+  // Add comment count update handler
+  const handleCommentsLoaded = useCallback((comments: any[]) => {
+    setVersionCommentCount(comments.length);
+  }, []);
+
   if (loading) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
@@ -608,18 +615,31 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
 
         {/* Version selector */}
         {project.versions.length > 0 && (
-          <Select
-            label="Version"
-            placeholder="Select a version"
-            selectedKeys={selectedVersion ? [selectedVersion] : []}
-            onChange={(e) => setSelectedVersion(e.target.value)}
-          >
-            {project.versions.map((version) => (
-              <SelectItem key={version.filename} value={version.filename}>
-                {getDisplayName(version.filename)}
-              </SelectItem>
-            ))}
-          </Select>
+          <div className="flex gap-4 items-end">
+            <Select
+              label="Version"
+              placeholder="Select a version"
+              selectedKeys={selectedVersion ? [selectedVersion] : []}
+              onChange={(e) => setSelectedVersion(e.target.value)}
+              className="flex-1"
+            >
+              {project.versions.map((version) => (
+                <SelectItem key={version.filename} value={version.filename}>
+                  {getDisplayName(version.filename)}
+                </SelectItem>
+              ))}
+            </Select>
+            <DeleteVersionButton
+              projectId={projectId}
+              versionFilename={selectedVersion}
+              commentCount={versionCommentCount}
+              onDeleted={() => {
+                handleUploadComplete();
+                setSelectedVersion(project.versions[0]?.filename || '');
+              }}
+              isOwner={project.owner === getFirebaseAuth().currentUser?.uid}
+            />
+          </div>
         )}
 
         {/* Player controls */}
@@ -699,6 +719,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
                 projectId={projectId}
                 versionFilename={selectedVersion}
                 onTimeRangeClick={handleTimeRangeClick}
+                onCommentsLoaded={handleCommentsLoaded}
               />
             </div>
           </>

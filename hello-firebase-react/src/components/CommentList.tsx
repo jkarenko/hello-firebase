@@ -70,9 +70,10 @@ interface CommentListProps {
   projectId: string;
   versionFilename: string;
   onTimeRangeClick: (range: CommentTimeRange) => void;
+  onCommentsLoaded?: (comments: CommentWithUserInfo[]) => void;
 }
 
-export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: CommentListProps) => {
+export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCommentsLoaded }: CommentListProps) => {
   const [filter, setFilter] = useState<CommentFilterBy>('all');
   const [sortBy, setSortBy] = useState<CommentSortBy>('timestamp');
   const [deleteModalState, setDeleteModalState] = useState<{
@@ -143,8 +144,10 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
 
   const filteredAndSortedComments = useMemo(() => {
     const filtered = filterComments(comments, filter, userId);
-    return sortComments(filtered, sortBy);
-  }, [comments, filter, sortBy, userId, filterComments, sortComments]);
+    const sorted = sortComments(filtered, sortBy);
+    onCommentsLoaded?.(sorted);
+    return sorted;
+  }, [comments, filter, sortBy, userId, filterComments, sortComments, onCommentsLoaded]);
 
   const handleResolveClick = async (comment: CommentWithUserInfo) => {
     if (!comment.resolved || !comment.resolvedByUser) {
