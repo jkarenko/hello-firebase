@@ -1,11 +1,41 @@
 import { useState, useMemo } from 'react';
-import { Card, CardBody, Avatar, Button, Select, SelectItem, Spinner } from "@nextui-org/react";
-import { CheckCircleIcon, XCircleIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
+import { Card, CardBody, Avatar, Button, Select, SelectItem, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@nextui-org/react";
+import { CheckCircleIcon, XCircleIcon, ChatBubbleLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useComments } from '../hooks/useComments';
 import { CommentWithUserInfo, CommentFilterBy, CommentSortBy, CommentTimeRange } from '../types/comments';
 import { formatDistanceToNow } from 'date-fns';
 import { getAuth } from 'firebase/auth';
 import { toast } from 'sonner';
+
+interface DeleteModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading: boolean;
+}
+
+const DeleteModal = ({ isOpen, onClose, onConfirm, isLoading }: DeleteModalProps) => (
+  <Modal isOpen={isOpen} onClose={onClose}>
+    <ModalContent>
+      <ModalHeader>Delete Comment</ModalHeader>
+      <ModalBody>
+        Are you sure you want to delete this comment? This action cannot be undone.
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="light" onPress={onClose}>
+          Cancel
+        </Button>
+        <Button 
+          color="danger" 
+          onPress={onConfirm}
+          isLoading={isLoading}
+        >
+          Delete
+        </Button>
+      </ModalFooter>
+    </ModalContent>
+  </Modal>
+);
 
 interface CommentListProps {
   projectId: string;
@@ -16,6 +46,16 @@ interface CommentListProps {
 export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: CommentListProps) => {
   const [filter, setFilter] = useState<CommentFilterBy>('all');
   const [sortBy, setSortBy] = useState<CommentSortBy>('timestamp');
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    commentId: string | null;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    commentId: null,
+    isLoading: false,
+  });
+  
   const auth = getAuth();
   const userId = auth.currentUser?.uid;
 
@@ -24,9 +64,45 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
     loading,
     error,
     updateComment,
+    deleteComment,
     filterComments,
     sortComments,
   } = useComments(projectId, versionFilename);
+
+  const handleDeleteClick = (commentId: string) => {
+    setDeleteModalState({
+      isOpen: true,
+      commentId,
+      isLoading: false,
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModalState.commentId) return;
+
+    setDeleteModalState(prev => ({ ...prev, isLoading: true }));
+    try {
+      await deleteComment(deleteModalState.commentId);
+      toast.success('Comment deleted');
+      setDeleteModalState({
+        isOpen: false,
+        commentId: null,
+        isLoading: false,
+      });
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+      toast.error('Failed to delete comment');
+      setDeleteModalState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalState({
+      isOpen: false,
+      commentId: null,
+      isLoading: false,
+    });
+  };
 
   const filteredAndSortedComments = useMemo(() => {
     const filtered = filterComments(comments, filter, userId);
@@ -149,6 +225,17 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
                           by {comment.resolvedByUser.displayName}
                         </span>
                       )}
+                      {comment.createdBy === userId && (
+                        <Button
+                          size="sm"
+                          color="danger"
+                          variant="light"
+                          onClick={() => handleDeleteClick(comment.id)}
+                          startContent={<TrashIcon className="w-4 h-4" />}
+                        >
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -157,6 +244,12 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
           ))}
         </div>
       )}
+      <DeleteModal
+        isOpen={deleteModalState.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        isLoading={deleteModalState.isLoading}
+      />
     </div>
   );
 }; 

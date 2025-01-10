@@ -321,8 +321,18 @@ export const useComments = (projectId: string, versionFilename?: string) => {
 
     try {
       const commentRef = doc(db, "projects", projectId, "comments", commentId);
+
+      // Optimistically remove the comment from the UI
+      setComments((prevComments) => prevComments.filter((c) => c.id !== commentId));
+
+      // Actually delete the comment
       await deleteDoc(commentRef);
     } catch (err) {
+      // Revert optimistic update on error
+      const deletedComment = comments.find((c) => c.id === commentId);
+      if (deletedComment) {
+        setComments((prevComments) => [...prevComments, deletedComment]);
+      }
       setError("Failed to delete comment");
       throw err;
     }
