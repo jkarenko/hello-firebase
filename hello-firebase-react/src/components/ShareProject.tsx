@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, Input, useDisclosure, Switch } from "@nextui-org/react";
-import { UserPlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getFirebaseFunctions, getAuth } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -18,7 +18,7 @@ interface ShareProjectProps {
   projectName: string;
 }
 
-const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
+const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>(({ projectId, projectName }, ref) => {
   const navigate = useNavigate();
   const shareModal = useDisclosure();
   const confirmModal = useDisclosure();
@@ -30,6 +30,11 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
   const [isOwner, setIsOwner] = useState(false);
   const [collaboratorToRemove, setCollaboratorToRemove] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+
+  // Expose onOpen method through ref
+  React.useImperativeHandle(ref, () => ({
+    onOpen: shareModal.onOpen
+  }));
 
   // Track auth state
   useEffect(() => {
@@ -173,15 +178,6 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
 
   return (
     <>
-      <Button
-        isIconOnly
-        variant="light"
-        onPress={shareModal.onOpen}
-        aria-label="Share project"
-      >
-        <UserPlusIcon className="w-6 h-6" />
-      </Button>
-
       <Modal 
         isOpen={shareModal.isOpen} 
         onClose={shareModal.onClose} 
@@ -369,6 +365,6 @@ const ShareProject = ({ projectId, projectName }: ShareProjectProps) => {
       </Modal>
     </>
   );
-};
+});
 
 export default React.memo(ShareProject); 

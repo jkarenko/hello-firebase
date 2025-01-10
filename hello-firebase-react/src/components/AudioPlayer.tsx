@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure, Divider } from "@nextui-org/react";
+import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner, Divider } from "@nextui-org/react";
 import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
-import { PencilIcon } from '@heroicons/react/24/outline';
 import { AudioCache } from '../utils/AudioCache';
 import FileUpload from './FileUpload';
-import ShareProject from './ShareProject';
 import { CommentList } from './CommentList';
 import { CommentForm } from './CommentForm';
 import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
@@ -12,7 +10,7 @@ import { httpsCallable } from 'firebase/functions';
 import { getDisplayName } from '../utils/audio';
 import { CommentTimeRange } from '../types/comments';
 import { debounce } from 'lodash';
-import { DeleteVersionButton } from './DeleteVersionButton';
+import { ProjectActions } from './ProjectActions';
 
 interface Version {
   filename: string;
@@ -48,8 +46,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   const [duration, setDuration] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newProjectName, setNewProjectName] = useState('');
-  const renameModal = useDisclosure();
   const [commentTimeRange, setCommentTimeRange] = useState<CommentTimeRange>({
     start: 0,
     end: 0
@@ -368,7 +364,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   }, []);
 
   const handleUploadComplete = useCallback(async () => {
-    // Reload project data to get new versions
     try {
       const auth = getFirebaseAuth();
       if (!auth.currentUser) {
@@ -381,7 +376,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
       
       setProject(result.data);
       if (result.data.versions.length > 0) {
-        setSelectedVersion(result.data.versions[0].filename);
+        setSelectedVersion(result.data.versions[0]?.filename || '');
       }
       await preCacheVersions(result.data.versions);
     } catch (err) {
@@ -389,37 +384,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
       setError('Failed to reload project data. Please refresh the page.');
     }
   }, [projectId, preCacheVersions]);
-
-  // Memoize ShareProject props
-  const shareProjectProps = useMemo(() => ({
-    projectId,
-    projectName: project?.name || ''
-  }), [projectId, project?.name]);
-
-  const handleRename = useCallback(async () => {
-    if (!project || !newProjectName.trim()) {
-      return;
-    }
-
-    try {
-      const functions = getFirebaseFunctions();
-      const renameProjectFn = httpsCallable(functions, 'renameProject');
-      await renameProjectFn({ projectId, name: newProjectName.trim() });
-      
-      setProject(prev => prev ? { ...prev, name: newProjectName.trim() } : null);
-      renameModal.onClose();
-    } catch (err) {
-      console.error('Error renaming project:', err);
-      setError('Failed to rename project. Please try again.');
-    }
-  }, [project, projectId, newProjectName]);
-
-  const openRenameModal = useCallback(() => {
-    if (project) {
-      setNewProjectName(project.name);
-      renameModal.onOpen();
-    }
-  }, [project]);
 
   // Update comment time range when seeking or playing
   const debouncedSetCommentTimeRange = useMemo(
@@ -542,7 +506,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardBody className="flex flex-col gap-8 p-8">
-        {/* Header section with back button and share button */}
+        {/* Header section with back button and project actions */}
         <div className="flex justify-between items-center">
           <Button
             variant="light"
@@ -554,7 +518,15 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
             Back to projects
           </Button>
           {project && (
-            <ShareProject {...shareProjectProps} />
+            <ProjectActions
+              projectId={projectId}
+              projectName={project.name}
+              selectedVersion={selectedVersion}
+              commentCount={versionCommentCount}
+              isOwner={project.owner === getFirebaseAuth().currentUser?.uid}
+              onProjectRenamed={(newName) => setProject(prev => prev ? { ...prev, name: newName } : null)}
+              onVersionDeleted={handleUploadComplete}
+            />
           )}
         </div>
 
@@ -563,58 +535,10 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           <h1 className="text-4xl font-normal text-left text-foreground">
             {project?.name}
           </h1>
-          {project && project.owner === getFirebaseAuth().currentUser?.uid && (
-            <Button
-              isIconOnly
-              variant="light"
-              className="min-w-unit-8 w-unit-8 h-unit-8"
-              aria-label="Rename project"
-              onPress={openRenameModal}
-            >
-              <PencilIcon className="w-4 h-4" />
-            </Button>
-          )}
         </div>
 
-        {/* Rename Modal */}
-        <Modal 
-          isOpen={renameModal.isOpen} 
-          onOpenChange={renameModal.onOpenChange}
-          placement="center"
-        >
-          <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader className="flex flex-col gap-1">Rename Project</ModalHeader>
-                <ModalBody>
-                  <Input
-                    label="Project Name"
-                    placeholder="Enter new project name"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
-                  />
-                </ModalBody>
-                <ModalFooter>
-                  <Button color="danger" variant="light" onPress={onClose}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    color="primary" 
-                    onPress={() => {
-                      handleRename();
-                      onClose();
-                    }}
-                  >
-                    Save
-                  </Button>
-                </ModalFooter>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
-
         {/* Version selector */}
-        {project.versions.length > 0 && (
+        {project?.versions.length > 0 && (
           <div className="flex gap-4 items-end">
             <Select
               label="Version"
@@ -629,16 +553,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
                 </SelectItem>
               ))}
             </Select>
-            <DeleteVersionButton
-              projectId={projectId}
-              versionFilename={selectedVersion}
-              commentCount={versionCommentCount}
-              onDeleted={() => {
-                handleUploadComplete();
-                setSelectedVersion(project.versions[0]?.filename || '');
-              }}
-              isOwner={project.owner === getFirebaseAuth().currentUser?.uid}
-            />
           </div>
         )}
 
