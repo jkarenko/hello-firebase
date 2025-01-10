@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getAuth, GoogleAuthProvider, User, Auth as FirebaseAuth, onAuthStateChanged, getRedirectResult } from 'firebase/auth';
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
 import AuthComponent from './components/Auth';
 import ProjectList from './components/ProjectList';
 import AudioPlayer from './components/AudioPlayer';
+import JoinProject from './components/JoinProject';
 import './App.css';
 
 const ProjectView = () => {
@@ -26,7 +27,9 @@ const App = () => {
   const [user, setUser] = useState<User | null>(null);
   const [auth, setAuth] = useState<FirebaseAuth | null>(null);
   const [provider, setProvider] = useState<GoogleAuthProvider | null>(null);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const auth = getAuth();
@@ -58,15 +61,18 @@ const App = () => {
       });
       
       setUser(user);
-      if (!user) {
+      setIsAuthChecked(true);
+      
+      // Only redirect to home if not on join route and not authenticated
+      if (!user && !location.pathname.startsWith('/join/')) {
         navigate('/');
       }
     });
 
     return () => unsubscribe();
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
-  if (!auth || !provider) {
+  if (!auth || !provider || !isAuthChecked) {
     return <div>Loading...</div>;
   }
 
@@ -89,13 +95,23 @@ const App = () => {
       </header>
 
       <main className="main-content">
-        {user && (
-          <Routes>
-            <Route path="/" element={<ProjectList />} />
-            <Route path="/project/:projectId" element={<ProjectView />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        )}
+        <Routes>
+          {/* Protected routes */}
+          {user ? (
+            <>
+              <Route path="/" element={<ProjectList />} />
+              <Route path="/project/:projectId" element={<ProjectView />} />
+            </>
+          ) : (
+            <Route path="/" element={<Navigate to="/login" />} />
+          )}
+          
+          {/* Public routes */}
+          <Route path="/join/:token" element={<JoinProject />} />
+          
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
     </div>
   );

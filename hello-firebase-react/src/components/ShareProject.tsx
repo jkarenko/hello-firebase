@@ -6,6 +6,7 @@ import { httpsCallable } from 'firebase/functions';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import React from 'react';
+import InviteLinkManager from './InviteLinkManager';
 
 interface Collaborator {
   email: string;
@@ -250,48 +251,49 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               {/* Collaborators section */}
               {collaborators.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Collaborators</h3>
-                  <div className="space-y-2">
+                  <h3 className="text-sm font-medium">People with access</h3>
+                  <div className="space-y-3">
                     {collaborators.map((collaborator) => (
                       <div key={collaborator.email} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          {isOwner && (
+                          <span className="text-sm">{collaborator.email}</span>
+                          {collaborator.isPending && (
+                            <span className="text-xs text-default-400">(Pending)</span>
+                          )}
+                        </div>
+                        {isOwner && collaborator.email !== ownerEmail && (
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              size="sm"
+                              isSelected={collaborator.isEditor}
+                              onValueChange={(isEditor) => handleToggleEditor(collaborator.email, isEditor)}
+                            >
+                              Can edit
+                            </Switch>
                             <Button
                               isIconOnly
-                              size="sm"
                               variant="light"
+                              color="danger"
                               onPress={() => handleRemoveCollaborator(collaborator.email)}
-                              className="text-danger"
                             >
                               <TrashIcon className="w-4 h-4" />
                             </Button>
-                          )}
-                          <span className="text-sm">{collaborator.email}</span>
-                          {!isOwner && !collaborator.isPending && (
-                            <span className="text-xs text-default-400">
-                              {collaborator.isEditor ? "Editor" : "Viewer"}
-                            </span>
-                          )}
-                          {collaborator.isPending && (
-                            <span className="text-xs text-warning">
-                              Pending
-                            </span>
-                          )}
-                        </div>
-                        {isOwner && !collaborator.isPending && (
-                          <Switch
-                            size="sm"
-                            isSelected={collaborator.isEditor}
-                            onValueChange={(checked) => handleToggleEditor(collaborator.email, checked)}
-                          >
-                            Editor
-                          </Switch>
+                          </div>
                         )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Invite Links section */}
+              <div className="mt-6 pt-6 border-t border-divider">
+                <InviteLinkManager
+                  projectId={projectId}
+                  isOwner={isOwner}
+                  isEditor={collaborators.find(c => c.email === currentUserEmail)?.isEditor ?? false}
+                />
+              </div>
             </div>
           </ModalBody>
         </ModalContent>

@@ -4,9 +4,15 @@ import {getAuth} from "firebase-admin/auth";
 import * as logger from "firebase-functions/logger";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {isSupportedAudioFile, getDisplayName} from "./utils/audio";
+import * as crypto from "crypto";
 
 const db = getFirestore();
 const storage = getStorage();
+
+// Generate a secure random token for invite links
+function generateInviteToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
 
 export interface ProjectAccess {
   projectId: string;
@@ -27,6 +33,17 @@ export interface ProjectInvitation {
   isEditor: boolean;
   status: "pending" | "delivered";
   createdAt: Timestamp;
+}
+
+export interface ProjectInviteLink {
+  token: string;
+  projectId: string;
+  createdBy: string;
+  isEditor: boolean;
+  createdAt: Timestamp;
+  expiresAt: Timestamp | null;
+  maxUses: number | null;
+  usedBy: string[];
 }
 
 export async function getProjectAccess(projectId: string): Promise<ProjectAccess | null> {
@@ -1186,6 +1203,290 @@ export const deleteProject = onCall(
         throw error;
       }
       throw new HttpsError("internal", "Failed to delete project");
+    }
+  }
+);
+
+export async function createProjectInviteLink(
+  projectId: string,
+  createdBy: string,
+  options: {
+    isEditor?: boolean;
+    expiresInDays?: number;
+    maxUses?: number;
+  } = {}
+): Promise<ProjectInviteLink> {
+  const token = generateInviteToken();
+  const now = Timestamp.now();
+
+  const inviteLink: ProjectInviteLink = {
+    token,
+    projectId,
+    createdBy,
+    isEditor: options.isEditor ?? false,
+    createdAt: now,
+    expiresAt: options.expiresInDays
+      ? Timestamp.fromDate(new Date(Date.now() + options.expiresInDays * 24 * 60 * 60 * 1000))
+      : null,
+    maxUses: options.maxUses ?? null,
+    usedBy: [],
+  };
+
+  await db.collection("projectInviteLinks").doc(token).set(inviteLink);
+  return inviteLink;
+}
+
+export async function validateAndUseInviteLink(token: string, userId: string): Promise<ProjectInviteLink> {
+  const inviteLinkRef = db.collection("projectInviteLinks").doc(token);
+
+  return db.runTransaction(async (transaction) => {
+    const doc = await transaction.get(inviteLinkRef);
+
+    if (!doc.exists) {
+      throw new HttpsError("not-found", "Invite link not found");
+    }
+
+    const inviteLink = doc.data() as ProjectInviteLink;
+    const now = Timestamp.now();
+
+    // Check if link has expired
+    if (inviteLink.expiresAt && inviteLink.expiresAt.toDate() < now.toDate()) {
+      throw new HttpsError("failed-precondition", "Invite link has expired");
+    }
+
+    // Check if max uses reached
+    if (inviteLink.maxUses !== null && inviteLink.usedBy.length >= inviteLink.maxUses) {
+      throw new HttpsError("failed-precondition", "Invite link has reached maximum uses");
+    }
+
+    // Check if user has already used this link
+    if (inviteLink.usedBy.includes(userId)) {
+      throw new HttpsError("already-exists", "You have already used this invite link");
+    }
+
+    // Add user to usedBy array
+    transaction.update(inviteLinkRef, {
+      usedBy: FieldValue.arrayUnion(userId),
+    });
+
+    return inviteLink;
+  });
+}
+
+export async function revokeProjectInviteLink(token: string): Promise<void> {
+  await db.collection("projectInviteLinks").doc(token).delete();
+}
+
+export const createInviteLink = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId, isEditor = false, expiresInDays, maxUses} = request.data;
+
+      if (!projectId) {
+        throw new HttpsError("invalid-argument", "Project ID is required");
+      }
+
+      // Check if user has access to create invite links (must be owner or editor)
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      const isOwner = projectAccess.owner === request.auth.uid;
+      const isProjectEditor = projectAccess.collaborators?.[request.auth.uid]?.role === "editor";
+
+      if (!isOwner && !isProjectEditor) {
+        throw new HttpsError("permission-denied", "Only project owners and editors can create invite links");
+      }
+
+      const inviteLink = await createProjectInviteLink(projectId, request.auth.uid, {
+        isEditor,
+        expiresInDays,
+        maxUses,
+      });
+
+      logger.info("Created project invite link", {
+        projectId,
+        createdBy: request.auth.uid,
+        token: inviteLink.token,
+      });
+
+      return inviteLink;
+    } catch (error) {
+      logger.error("Error creating invite link:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to create invite link");
+    }
+  }
+);
+
+export const useInviteLink = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {token} = request.data;
+
+      if (!token) {
+        throw new HttpsError("invalid-argument", "Invite token is required");
+      }
+
+      // Validate and use the invite link
+      const inviteLink = await validateAndUseInviteLink(token, request.auth.uid);
+
+      // Add user as collaborator
+      await addProjectCollaborator(inviteLink.projectId, request.auth.uid, inviteLink.isEditor ? "editor" : "reader");
+
+      logger.info("Used project invite link", {
+        projectId: inviteLink.projectId,
+        usedBy: request.auth.uid,
+        token,
+      });
+
+      return {success: true, projectId: inviteLink.projectId};
+    } catch (error) {
+      logger.error("Error using invite link:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to use invite link");
+    }
+  }
+);
+
+export const revokeInviteLink = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {token} = request.data;
+
+      if (!token) {
+        throw new HttpsError("invalid-argument", "Invite token is required");
+      }
+
+      // Get the invite link to check permissions
+      const inviteLinkDoc = await db.collection("projectInviteLinks").doc(token).get();
+      if (!inviteLinkDoc.exists) {
+        throw new HttpsError("not-found", "Invite link not found");
+      }
+
+      const inviteLink = inviteLinkDoc.data() as ProjectInviteLink;
+
+      // Check if user has permission to revoke (must be owner, editor, or creator of the link)
+      const projectAccess = await getProjectAccess(inviteLink.projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      const isOwner = projectAccess.owner === request.auth.uid;
+      const isProjectEditor = projectAccess.collaborators?.[request.auth.uid]?.role === "editor";
+      const isLinkCreator = inviteLink.createdBy === request.auth.uid;
+
+      if (!isOwner && !isProjectEditor && !isLinkCreator) {
+        throw new HttpsError(
+          "permission-denied",
+          "Only project owners, editors, or the link creator can revoke invite links"
+        );
+      }
+
+      await revokeProjectInviteLink(token);
+
+      logger.info("Revoked project invite link", {
+        projectId: inviteLink.projectId,
+        revokedBy: request.auth.uid,
+        token,
+      });
+
+      return {success: true};
+    } catch (error) {
+      logger.error("Error revoking invite link:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to revoke invite link");
+    }
+  }
+);
+
+export const getActiveInviteLinks = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId} = request.data;
+      if (!projectId) {
+        throw new HttpsError("invalid-argument", "Project ID is required");
+      }
+
+      // Check if user has access to view invite links (must be owner or editor)
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      const isOwner = projectAccess.owner === request.auth.uid;
+      const isProjectEditor = projectAccess.collaborators?.[request.auth.uid]?.role === "editor";
+
+      if (!isOwner && !isProjectEditor) {
+        throw new HttpsError("permission-denied", "Only project owners and editors can view invite links");
+      }
+
+      // Get all active invite links for this project
+      const inviteLinksSnapshot = await db.collection("projectInviteLinks").where("projectId", "==", projectId).get();
+
+      const now = Timestamp.now();
+      return inviteLinksSnapshot.docs
+        .map((doc) => doc.data() as ProjectInviteLink)
+        .filter((link) => {
+          // Filter out expired links
+          if (link.expiresAt && link.expiresAt.toDate() < now.toDate()) {
+            return false;
+          }
+          // Filter out links that have reached max uses
+          if (link.maxUses !== null && link.usedBy.length >= link.maxUses) {
+            return false;
+          }
+          return true;
+        });
+    } catch (error) {
+      logger.error("Error getting active invite links:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to get active invite links");
     }
   }
 );
