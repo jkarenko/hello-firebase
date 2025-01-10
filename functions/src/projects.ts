@@ -1112,3 +1112,80 @@ export const deleteVersion = onCall(async (request) => {
     throw new HttpsError("internal", "Failed to delete version");
   }
 });
+
+export const deleteProject = onCall(
+  {
+    cors: process.env.FUNCTIONS_EMULATOR
+      ? true
+      : ["https://jkarenko-hello-firebase.web.app", "https://jkarenko-hello-firebase.firebaseapp.com"],
+  },
+  async (request) => {
+    try {
+      // Ensure user is authenticated
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be authenticated");
+      }
+
+      const {projectId} = request.data;
+      if (!projectId) {
+        throw new HttpsError("invalid-argument", "Project ID is required");
+      }
+
+      // Check if project exists and get access info
+      const projectAccess = await getProjectAccess(projectId);
+      if (!projectAccess) {
+        throw new HttpsError("not-found", "Project not found");
+      }
+
+      // Only owner can delete project
+      if (projectAccess.owner !== request.auth.uid) {
+        throw new HttpsError("permission-denied", "Only the project owner can delete the project");
+      }
+
+      // Delete all files in storage
+      const bucket = storage.bucket();
+      const prefix = `audio/${projectId}/`;
+      const [files] = await bucket.getFiles({prefix});
+
+      // Delete all files in parallel
+      await Promise.all(files.map((file) => file.delete()));
+
+      // Delete all comments
+      const commentsRef = db.collection("comments").where("projectId", "==", projectId);
+      const commentsSnapshot = await commentsRef.get();
+      const commentBatch = db.batch();
+      commentsSnapshot.docs.forEach((doc) => {
+        commentBatch.delete(doc.ref);
+      });
+      await commentBatch.commit();
+
+      // Delete all invitations
+      const invitationsRef = db.collection("projects").doc(projectId).collection("invitations");
+      const invitationsSnapshot = await invitationsRef.get();
+      const invitationBatch = db.batch();
+      invitationsSnapshot.docs.forEach((doc) => {
+        invitationBatch.delete(doc.ref);
+      });
+      await invitationBatch.commit();
+
+      // Finally, delete the project document
+      await db.collection("projects").doc(projectId).delete();
+
+      logger.info("Project deleted", {
+        projectId,
+        deletedBy: request.auth.uid,
+        filesDeleted: files.length,
+        commentsDeleted: commentsSnapshot.size,
+        invitationsDeleted: invitationsSnapshot.size,
+      });
+
+      return {success: true};
+    } catch (error) {
+      logger.error("Error deleting project:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", "Failed to delete project");
+    }
+  }
+);

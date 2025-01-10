@@ -6,6 +6,7 @@ import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
 import { getDisplayName } from '../utils/audio';
 import ShareProject from './ShareProject';
+import { useNavigate } from 'react-router-dom';
 
 interface ProjectActionsProps {
   projectId: string;
@@ -26,8 +27,10 @@ export const ProjectActions = ({
   onProjectRenamed,
   onVersionDeleted,
 }: ProjectActionsProps) => {
+  const navigate = useNavigate();
   const renameModal = useDisclosure();
   const deleteModal = useDisclosure();
+  const deleteProjectModal = useDisclosure();
   const shareRef = useRef<{ onOpen: () => void } | null>(null);
   const [newProjectName, setNewProjectName] = useState(projectName);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +68,23 @@ export const ProjectActions = ({
     } catch (err) {
       console.error('Failed to delete version:', err);
       toast.error('Failed to delete version');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    setIsLoading(true);
+    try {
+      const functions = getFirebaseFunctions();
+      const deleteProjectFn = httpsCallable(functions, 'deleteProject');
+      await deleteProjectFn({ projectId });
+      toast.success('Project deleted successfully');
+      deleteProjectModal.onClose();
+      navigate('/');
+    } catch (err) {
+      console.error('Failed to delete project:', err);
+      toast.error('Failed to delete project');
     } finally {
       setIsLoading(false);
     }
@@ -117,6 +137,18 @@ export const ProjectActions = ({
               onPress={deleteModal.onOpen}
             >
               Delete Version
+            </DropdownItem>
+          ) : null}
+          {isOwner ? (
+            <DropdownItem
+              key="delete-project"
+              className="text-danger"
+              color="danger"
+              description="Permanently delete this project"
+              startContent={<TrashIcon className="w-4 h-4" />}
+              onPress={deleteProjectModal.onOpen}
+            >
+              Delete Project
             </DropdownItem>
           ) : null}
         </DropdownMenu>
@@ -184,6 +216,29 @@ export const ProjectActions = ({
               isLoading={isLoading}
             >
               Delete
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Project Modal */}
+      <Modal isOpen={deleteProjectModal.isOpen} onClose={deleteProjectModal.onClose}>
+        <ModalContent>
+          <ModalHeader>Delete Project</ModalHeader>
+          <ModalBody>
+            <p>Are you sure you want to delete <strong>{projectName}</strong>?</p>
+            <p className="text-danger">This action cannot be undone. All versions and comments will be permanently deleted.</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={deleteProjectModal.onClose}>
+              Cancel
+            </Button>
+            <Button 
+              color="danger" 
+              onPress={handleDeleteProject}
+              isLoading={isLoading}
+            >
+              Delete Project
             </Button>
           </ModalFooter>
         </ModalContent>
