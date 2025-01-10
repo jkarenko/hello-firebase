@@ -10,6 +10,7 @@ import {
   deleteDoc,
   doc,
   Timestamp,
+  serverTimestamp,
 } from "firebase/firestore";
 import {getFirestore} from "firebase/firestore";
 import {getAuth} from "firebase/auth";
@@ -34,13 +35,19 @@ interface GetCommentsResponse {
   comments: CommentResponse[];
 }
 
+interface PendingComment {
+  localId: string;
+  data: CommentWithUserInfo;
+}
+
 export const useComments = (projectId: string, versionFilename?: string) => {
   const [comments, setComments] = useState<CommentWithUserInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const initialLoadRef = useRef(true);
   const lastRequestIdRef = useRef(0);
-  const pendingUpdatesRef = useRef<Set<string>>(new Set()); // Track pending updates
+  const pendingUpdatesRef = useRef<Set<string>>(new Set());
+  const pendingNewCommentsRef = useRef<Map<string, PendingComment>>(new Map());
 
   const db = getFirestore();
   const auth = getAuth();
@@ -85,17 +92,35 @@ export const useComments = (projectId: string, versionFilename?: string) => {
             resolvedAt: comment.resolvedAt ? Timestamp.fromMillis(comment.resolvedAt) : undefined,
           }));
 
-          // Merge server updates with local state, preserving optimistic updates
           setComments((prevComments) => {
             const updatedComments: CommentWithUserInfo[] = [...commentsWithTimestamps];
 
-            // Keep optimistic updates for comments that are being modified
+            // Keep optimistic updates for modified comments
             prevComments.forEach((prevComment) => {
               if (pendingUpdatesRef.current.has(prevComment.id)) {
                 const index = updatedComments.findIndex((c) => c.id === prevComment.id);
                 if (index !== -1) {
                   updatedComments[index] = prevComment;
                 }
+              }
+            });
+
+            // Add pending new comments that haven't been synced yet
+            pendingNewCommentsRef.current.forEach((pendingComment, localId) => {
+              // Check if this pending comment has been synced (exists in server response)
+              const serverComment = updatedComments.find(
+                (c) =>
+                  c.createdBy === pendingComment.data.createdBy &&
+                  c.content === pendingComment.data.content &&
+                  Math.abs(c.createdAt.toMillis() - pendingComment.data.createdAt.toMillis()) < 5000
+              );
+
+              if (serverComment) {
+                // Remove from pending if found in server response
+                pendingNewCommentsRef.current.delete(localId);
+              } else {
+                // Keep the optimistic update if not yet synced
+                updatedComments.unshift(pendingComment.data);
               }
             });
 
@@ -131,29 +156,49 @@ export const useComments = (projectId: string, versionFilename?: string) => {
       throw new Error("Must be logged in to comment");
     }
 
+    const localId = Math.random().toString(36).substring(7);
+    const now = Timestamp.now();
+
     const commentData: Omit<Comment, "id"> = {
       ...data,
-      createdAt: Timestamp.now(),
+      createdAt: now,
       createdBy: auth.currentUser.uid,
       resolved: false,
     };
 
-    try {
-      const commentsRef = collection(db, "projects", projectId, "comments");
-      const docRef = await addDoc(commentsRef, commentData);
+    // Create optimistic comment
+    const newComment: CommentWithUserInfo = {
+      id: localId, // Temporary ID
+      ...commentData,
+      createdByUser: {
+        displayName: auth.currentUser.displayName || "Unknown User",
+        photoURL: auth.currentUser.photoURL || undefined,
+      },
+    };
 
-      // Optimistically add the new comment to the list
-      const newComment: CommentWithUserInfo = {
-        id: docRef.id,
+    try {
+      // Add to pending new comments
+      pendingNewCommentsRef.current.set(localId, {
+        localId,
+        data: newComment,
+      });
+
+      // Optimistically update UI
+      setComments((prev) => [newComment, ...prev]);
+
+      // Actually create the comment
+      const commentsRef = collection(db, "projects", projectId, "comments");
+      const serverCommentData = {
         ...commentData,
-        createdByUser: {
-          displayName: auth.currentUser.displayName || "Unknown User",
-          photoURL: auth.currentUser.photoURL || undefined,
-        },
+        createdAt: serverTimestamp(), // Use server timestamp for consistent ordering
       };
 
-      setComments((prev) => [newComment, ...prev]);
+      await addDoc(commentsRef, serverCommentData);
     } catch (err) {
+      // Remove from pending on error
+      pendingNewCommentsRef.current.delete(localId);
+      // Remove optimistic update
+      setComments((prev) => prev.filter((c) => c.id !== localId));
       setError("Failed to create comment");
       throw err;
     }
