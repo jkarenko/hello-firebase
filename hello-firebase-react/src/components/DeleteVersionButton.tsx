@@ -4,6 +4,7 @@ import { TrashIcon } from '@heroicons/react/24/outline';
 import { getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'sonner';
+import { getDisplayName } from '../utils/audio';
 
 interface DeleteVersionButtonProps {
   projectId: string;
@@ -16,20 +17,16 @@ interface DeleteVersionButtonProps {
 export const DeleteVersionButton = ({ projectId, versionFilename, commentCount, onDeleted, isOwner }: DeleteVersionButtonProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const functions = getFirebaseFunctions();
-
-  if (!isOwner) {
-    return null;
-  }
 
   const handleDelete = async () => {
     setIsLoading(true);
     try {
+      const functions = getFirebaseFunctions();
       const deleteVersionFn = httpsCallable(functions, 'deleteVersion');
       await deleteVersionFn({ projectId, versionFilename });
       toast.success('Version deleted successfully');
-      setIsOpen(false);
       onDeleted();
+      setIsOpen(false);
     } catch (err) {
       console.error('Failed to delete version:', err);
       toast.error('Failed to delete version');
@@ -38,49 +35,40 @@ export const DeleteVersionButton = ({ projectId, versionFilename, commentCount, 
     }
   };
 
+  if (!isOwner) {
+    return null;
+  }
+
   return (
     <>
       <Button
         color="danger"
         variant="light"
         startContent={<TrashIcon className="w-4 h-4" />}
-        onClick={() => setIsOpen(true)}
+        onPress={() => setIsOpen(true)}
       >
-        Delete Version
+        Delete
       </Button>
 
-      <Modal isOpen={isOpen} onClose={() => !isLoading && setIsOpen(false)}>
+      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)}>
         <ModalContent>
           <ModalHeader>Delete Version</ModalHeader>
           <ModalBody>
-            <p>Are you sure you want to delete this version?</p>
-            <p className="text-sm text-gray-500 mt-2">
-              This will permanently delete:
-              <ul className="list-disc list-inside mt-1">
-                <li>The version file</li>
-                {commentCount > 0 && (
-                  <li>{commentCount} comment{commentCount !== 1 ? 's' : ''} associated with this version</li>
-                )}
-              </ul>
-            </p>
-            <p className="text-sm text-danger mt-4">
-              This action cannot be undone.
-            </p>
+            <p>Are you sure you want to delete <strong>{getDisplayName(versionFilename)}</strong>?</p>
+            {commentCount > 0 && (
+              <p className="text-danger">This will also delete {commentCount} comment{commentCount === 1 ? '' : 's'} associated with this version.</p>
+            )}
           </ModalBody>
           <ModalFooter>
-            <Button
-              variant="light"
-              onPress={() => setIsOpen(false)}
-              disabled={isLoading}
-            >
+            <Button variant="light" onPress={() => setIsOpen(false)}>
               Cancel
             </Button>
-            <Button
-              color="danger"
+            <Button 
+              color="danger" 
               onPress={handleDelete}
               isLoading={isLoading}
             >
-              Delete Version
+              Delete
             </Button>
           </ModalFooter>
         </ModalContent>
