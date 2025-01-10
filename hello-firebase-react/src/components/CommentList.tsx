@@ -116,7 +116,9 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteModalState.commentId) return;
+    if (!deleteModalState.commentId) {
+      return;
+    }
 
     setDeleteModalState(prev => ({ ...prev, isLoading: true }));
     try {

@@ -19,7 +19,9 @@ export const CommentForm = ({ projectId, versionFilename, currentTimeRange, onCo
 
   const handleSubmit = async () => {
     const trimmedContent = content.trim();
-    if (!trimmedContent) return;
+    if (!trimmedContent) {
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
