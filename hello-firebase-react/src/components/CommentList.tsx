@@ -37,6 +37,35 @@ const DeleteModal = ({ isOpen, onClose, onConfirm, isLoading }: DeleteModalProps
   </Modal>
 );
 
+interface UnresolveModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  resolvedByName: string;
+}
+
+const UnresolveModal = ({ isOpen, onClose, onConfirm, resolvedByName }: UnresolveModalProps) => (
+  <Modal isOpen={isOpen} onClose={onClose} size="sm">
+    <ModalContent>
+      <ModalBody className="py-4">
+        <p>This comment was resolved by {resolvedByName}. Are you sure you want to unresolve it?</p>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="light" onPress={onClose} size="sm">
+          Cancel
+        </Button>
+        <Button 
+          color="primary" 
+          onPress={onConfirm}
+          size="sm"
+        >
+          Unresolve
+        </Button>
+      </ModalFooter>
+    </ModalContent>
+  </Modal>
+);
+
 interface CommentListProps {
   projectId: string;
   versionFilename: string;
@@ -56,6 +85,14 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
     isLoading: false,
   });
   
+  const [unresolveModalState, setUnresolveModalState] = useState<{
+    isOpen: boolean;
+    comment: CommentWithUserInfo | null;
+  }>({
+    isOpen: false,
+    comment: null,
+  });
+
   const auth = getAuth();
   const userId = auth.currentUser?.uid;
 
@@ -109,10 +146,23 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
     return sortComments(filtered, sortBy);
   }, [comments, filter, sortBy, userId, filterComments, sortComments]);
 
+  const handleResolveClick = async (comment: CommentWithUserInfo) => {
+    if (!comment.resolved || !comment.resolvedByUser) {
+      handleResolve(comment);
+      return;
+    }
+
+    setUnresolveModalState({
+      isOpen: true,
+      comment,
+    });
+  };
+
   const handleResolve = async (comment: CommentWithUserInfo) => {
     try {
       await updateComment(comment.id, { resolved: !comment.resolved });
       toast.success(comment.resolved ? 'Comment unresolved' : 'Comment resolved');
+      setUnresolveModalState({ isOpen: false, comment: null });
     } catch (err) {
       console.error('Failed to update comment:', err);
       toast.error('Failed to update comment status');
@@ -215,7 +265,7 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
                         size="sm"
                         color={comment.resolved ? "success" : "default"}
                         variant="flat"
-                        onClick={() => handleResolve(comment)}
+                        onClick={() => handleResolveClick(comment)}
                         startContent={comment.resolved ? <CheckCircleIcon className="w-4 h-4" /> : <XCircleIcon className="w-4 h-4" />}
                       >
                         {comment.resolved ? 'Resolved' : 'Mark Resolved'}
@@ -249,6 +299,12 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick }: Co
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
         isLoading={deleteModalState.isLoading}
+      />
+      <UnresolveModal
+        isOpen={unresolveModalState.isOpen}
+        onClose={() => setUnresolveModalState({ isOpen: false, comment: null })}
+        onConfirm={() => unresolveModalState.comment && handleResolve(unresolveModalState.comment)}
+        resolvedByName={unresolveModalState.comment?.resolvedByUser?.displayName || 'Unknown User'}
       />
     </div>
   );
