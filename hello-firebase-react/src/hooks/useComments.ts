@@ -40,6 +40,14 @@ interface PendingComment {
   data: CommentWithUserInfo;
 }
 
+const debounce = <T extends (...args: any[]) => any>(func: T, wait: number): ((...args: Parameters<T>) => void) => {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};
+
 export const useComments = (projectId: string, versionFilename?: string) => {
   const [comments, setComments] = useState<CommentWithUserInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,10 +56,84 @@ export const useComments = (projectId: string, versionFilename?: string) => {
   const lastRequestIdRef = useRef(0);
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
   const pendingNewCommentsRef = useRef<Map<string, PendingComment>>(new Map());
+  const debouncedGetCommentsFn = useRef<any>(null);
 
   const db = getFirestore();
   const auth = getAuth();
   const functions = getFirebaseFunctions();
+
+  // Initialize debounced function
+  useEffect(() => {
+    debouncedGetCommentsFn.current = debounce(async (requestId: number) => {
+      try {
+        const getCommentsFn = httpsCallable<{projectId: string; versionFilename?: string}, GetCommentsResponse>(
+          functions,
+          "getComments"
+        );
+
+        const result = await getCommentsFn({projectId, versionFilename});
+
+        // Check if this is still the most recent request
+        if (requestId !== lastRequestIdRef.current) {
+          console.debug("Ignoring stale comments update", {requestId, currentId: lastRequestIdRef.current});
+          return;
+        }
+
+        const commentsWithTimestamps = result.data.comments.map((comment) => ({
+          ...comment,
+          createdAt: Timestamp.fromMillis(comment.createdAt),
+          updatedAt: comment.updatedAt ? Timestamp.fromMillis(comment.updatedAt) : undefined,
+          resolvedAt: comment.resolvedAt ? Timestamp.fromMillis(comment.resolvedAt) : undefined,
+        }));
+
+        setComments((prevComments) => {
+          const updatedComments: CommentWithUserInfo[] = [...commentsWithTimestamps];
+
+          // Keep optimistic updates for modified comments
+          prevComments.forEach((prevComment) => {
+            if (pendingUpdatesRef.current.has(prevComment.id)) {
+              const index = updatedComments.findIndex((c) => c.id === prevComment.id);
+              if (index !== -1) {
+                updatedComments[index] = prevComment;
+              }
+            }
+          });
+
+          // Add pending new comments that haven't been synced yet
+          pendingNewCommentsRef.current.forEach((pendingComment, localId) => {
+            // Check if this pending comment has been synced (exists in server response)
+            const serverComment = updatedComments.find(
+              (c) =>
+                c.createdBy === pendingComment.data.createdBy &&
+                c.content === pendingComment.data.content &&
+                Math.abs(c.createdAt.toMillis() - pendingComment.data.createdAt.toMillis()) < 5000
+            );
+
+            if (serverComment) {
+              // Remove from pending if found in server response
+              pendingNewCommentsRef.current.delete(localId);
+            } else {
+              // Keep the optimistic update if not yet synced
+              updatedComments.unshift(pendingComment.data);
+            }
+          });
+
+          return updatedComments;
+        });
+
+        if (initialLoadRef.current) {
+          initialLoadRef.current = false;
+        }
+
+        setError(null);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to load comments:", err);
+        setError("Failed to load comments");
+        setLoading(false);
+      }
+    }, 500); // 500ms debounce
+  }, [projectId, versionFilename, functions]);
 
   // Subscribe to comments
   useEffect(() => {
@@ -70,75 +152,8 @@ export const useComments = (projectId: string, versionFilename?: string) => {
     const unsubscribe = onSnapshot(
       q,
       async () => {
-        try {
-          const requestId = ++lastRequestIdRef.current;
-          const getCommentsFn = httpsCallable<{projectId: string; versionFilename?: string}, GetCommentsResponse>(
-            functions,
-            "getComments"
-          );
-
-          const result = await getCommentsFn({projectId, versionFilename});
-
-          // Check if this is still the most recent request
-          if (requestId !== lastRequestIdRef.current) {
-            console.debug("Ignoring stale comments update", {requestId, currentId: lastRequestIdRef.current});
-            return;
-          }
-
-          const commentsWithTimestamps = result.data.comments.map((comment) => ({
-            ...comment,
-            createdAt: Timestamp.fromMillis(comment.createdAt),
-            updatedAt: comment.updatedAt ? Timestamp.fromMillis(comment.updatedAt) : undefined,
-            resolvedAt: comment.resolvedAt ? Timestamp.fromMillis(comment.resolvedAt) : undefined,
-          }));
-
-          setComments((prevComments) => {
-            const updatedComments: CommentWithUserInfo[] = [...commentsWithTimestamps];
-
-            // Keep optimistic updates for modified comments
-            prevComments.forEach((prevComment) => {
-              if (pendingUpdatesRef.current.has(prevComment.id)) {
-                const index = updatedComments.findIndex((c) => c.id === prevComment.id);
-                if (index !== -1) {
-                  updatedComments[index] = prevComment;
-                }
-              }
-            });
-
-            // Add pending new comments that haven't been synced yet
-            pendingNewCommentsRef.current.forEach((pendingComment, localId) => {
-              // Check if this pending comment has been synced (exists in server response)
-              const serverComment = updatedComments.find(
-                (c) =>
-                  c.createdBy === pendingComment.data.createdBy &&
-                  c.content === pendingComment.data.content &&
-                  Math.abs(c.createdAt.toMillis() - pendingComment.data.createdAt.toMillis()) < 5000
-              );
-
-              if (serverComment) {
-                // Remove from pending if found in server response
-                pendingNewCommentsRef.current.delete(localId);
-              } else {
-                // Keep the optimistic update if not yet synced
-                updatedComments.unshift(pendingComment.data);
-              }
-            });
-
-            return updatedComments;
-          });
-
-          // Only mark as not initial load after first successful update
-          if (initialLoadRef.current) {
-            initialLoadRef.current = false;
-          }
-
-          setError(null);
-          setLoading(false);
-        } catch (err) {
-          console.error("Failed to load comments:", err);
-          setError("Failed to load comments");
-          setLoading(false);
-        }
+        const requestId = ++lastRequestIdRef.current;
+        debouncedGetCommentsFn.current(requestId);
       },
       (err) => {
         console.error("Failed to subscribe to comments:", err);
@@ -148,7 +163,7 @@ export const useComments = (projectId: string, versionFilename?: string) => {
     );
 
     return () => unsubscribe();
-  }, [projectId, versionFilename, functions]);
+  }, [projectId, versionFilename]);
 
   // Create a new comment
   const createComment = async (data: CreateCommentData) => {
@@ -213,17 +228,14 @@ export const useComments = (projectId: string, versionFilename?: string) => {
     try {
       const commentRef = doc(db, "projects", projectId, "comments", commentId);
 
-      // Get the current comment data first
       const currentComment = comments.find((c) => c.id === commentId);
       if (!currentComment) {
         throw new Error("Comment not found");
       }
 
-      // Add to pending updates
       pendingUpdatesRef.current.add(commentId);
 
       if (data.resolved !== undefined) {
-        // For resolution status updates
         const updateData = {
           content: currentComment.content,
           createdAt: currentComment.createdAt,
@@ -233,16 +245,21 @@ export const useComments = (projectId: string, versionFilename?: string) => {
           endTimestamp: currentComment.endTimestamp,
           resolved: data.resolved,
           resolvedBy: auth.currentUser.uid,
+          resolvedAt: serverTimestamp(), // Use serverTimestamp for consistency
+        };
+
+        // First update local state with current timestamp for optimistic update
+        const optimisticUpdate = {
+          ...updateData,
           resolvedAt: Timestamp.now(),
         };
 
-        // First update local state
         setComments((prevComments) =>
           prevComments.map((comment) =>
             comment.id === commentId
               ? {
                   ...comment,
-                  ...updateData,
+                  ...optimisticUpdate,
                   resolvedByUser: data.resolved
                     ? {
                         displayName: auth.currentUser?.displayName || "Unknown User",
@@ -254,13 +271,11 @@ export const useComments = (projectId: string, versionFilename?: string) => {
           )
         );
 
-        // Then update the database
         await updateDoc(commentRef, updateData);
       } else if (data.content) {
-        // For content updates
         const updateData = {
           content: data.content,
-          updatedAt: Timestamp.now(),
+          updatedAt: serverTimestamp(), // Use serverTimestamp for consistency
           createdAt: currentComment.createdAt,
           createdBy: currentComment.createdBy,
           versionFilename: currentComment.versionFilename,
@@ -269,26 +284,28 @@ export const useComments = (projectId: string, versionFilename?: string) => {
           resolved: currentComment.resolved,
         };
 
-        // First update local state
+        // First update local state with current timestamp for optimistic update
+        const optimisticUpdate = {
+          ...updateData,
+          updatedAt: Timestamp.now(),
+        };
+
         setComments((prevComments) =>
           prevComments.map((comment) =>
             comment.id === commentId
               ? {
                   ...comment,
-                  ...updateData,
+                  ...optimisticUpdate,
                 }
               : comment
           )
         );
 
-        // Then update the database
         await updateDoc(commentRef, updateData);
       }
 
-      // Remove from pending updates after successful update
       pendingUpdatesRef.current.delete(commentId);
     } catch (err) {
-      // Remove from pending updates on error
       pendingUpdatesRef.current.delete(commentId);
       console.error("Failed to update comment:", err);
       setError("Failed to update comment");
