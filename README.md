@@ -1,64 +1,128 @@
-# Firebase TypeScript Practice Project
+# Echoherence
 
-A simple practice project to explore Firebase features using TypeScript. The project implements cloud functions and web hosting to demonstrate Firebase's capabilities.
+A collaborative audio project management system built with React and Firebase, allowing users to manage and share audio projects with version control.
 
 ## Features
 
-- Cloud Functions with TypeScript
-- Firebase Hosting
-- Audio player with version control and caching
-  - Multiple versions of the same song
-  - Smooth version switching
+- Authentication & User Management
+  - Google Authentication
+  - User session management
+  - Role-based permissions
+
+- Project Management
+  - Create and manage audio projects
+  - Multiple version support for each project
+  - Project sharing and collaboration
+
+- Collaboration Features
+  - Two-level access control (Editor/Viewer)
+  - Configurable invite link system
+    - Expiration dates
+    - Usage limits
+    - Permission levels
+  - Real-time updates and synchronization
+
+- Audio Player
+  - Version selection and control
+  - Play/Pause functionality
+  - Progress bar with seek capability
+  - Time display (current/total)
   - Background pre-caching for instant playback
-  - Progress bar and time display
   - Browser caching for improved performance
+  - Smooth version switching with time position preservation
+
+- Comments System
+  - Real-time comment updates
+  - Thread-based discussions
+  - Comment resolution tracking
 
 ## Tech Stack
 
-- Firebase Cloud Functions
-- TypeScript
-- Firebase Hosting
-- HTML/CSS/JavaScript (frontend)
-- Firebase Cloud Storage (audio files)
-- Web Audio API (audio playback)
+- React with TypeScript
+- Firebase V2 Services
+  - Authentication
+  - Cloud Functions
+  - Cloud Storage
+  - Firestore
+  - Hosting
+- Vite
+- Tailwind CSS
+- NextUI Component Library
+- Web Audio API
 
 ## Project Structure
 
+- `/hello-firebase-react` - React frontend application
 - `/functions` - TypeScript-based Firebase Cloud Functions
-- `/public` - Static web files for Firebase Hosting
 
 ## Local Development
 
 1. Install dependencies:
 
 ```bash
+# Install root dependencies
 npm install
-cd functions
+
+# Install React app dependencies
+cd hello-firebase-react
+npm install
+
+# Install Cloud Functions dependencies
+cd ../functions
 npm install
 ```
 
-2. Start local emulator:
+2. Development Mode:
 
 ```bash
-firebase emulators:start
+# Start all services (React, Functions, and Firebase Emulators)
+npm run dev
+
+# Or start individual services:
+npm run dev:react      # Start React development server
+npm run dev:functions  # Start Functions in watch mode
+npm run dev:emulator   # Start Firebase emulators
 ```
 
-The command starts the hosting of the static files in `./public` and builds the functions with the `--watch` flag, so it will automatically restart the functions when you make changes to the code.
-
-3. Access the web app at:
+3. Building:
 
 ```bash
-http://localhost:5000
+# Build all services
+npm run build
+
+# Or build individual services:
+npm run build:react    # Build React application
+npm run build:functions # Build Cloud Functions
 ```
-or whatever port is specified in the output of the `firebase emulators:start` command
 
-## Audio Player Features
+4. Access the application:
 
-The audio player provides:
-- Version selection dropdown
-- Play/Pause control
-- Progress bar with seek functionality
-- Time display (current/total)
-- Automatic pre-caching of all versions
-- Browser caching for improved performance
-- Smooth version switching with time position preservation
+- React development server: Check the Vite output for the port (typically http://localhost:5173)
+- Firebase Emulators: Check the Firebase output for various service ports
+  - Hosting: typically http://localhost:5000
+  - Functions: typically http://localhost:5001
+  - Firestore: typically http://localhost:8080
+  - Auth: typically http://localhost:9099
+  - Storage: typically http://localhost:9199
+
+## Available Scripts
+
+### Root Directory
+- `npm run dev` - Start all services in development mode
+- `npm run build` - Build all services
+- `npm run start` - Start Firebase emulators with data import/export
+
+### React Application (`/hello-firebase-react`)
+- `npm run dev` - Start Vite development server
+- `npm run build` - Build the React application
+- `npm run preview` - Preview the production build locally before deployment (runs on http://localhost:4173 by default)
+- `npm run lint` - Run ESLint
+
+> Note: The `preview` command is useful for testing the production build locally before deployment. Unlike `dev` which serves the source files directly, `preview` serves the actual built files from the `dist` directory, exactly as they would be served in production. This helps catch any potential issues that might only appear in the production build.
+
+### Cloud Functions (`/functions`)
+- `npm run build` - Build TypeScript functions
+- `npm run dev` - Watch and rebuild functions
+- `npm run serve` - Start functions emulator
+- `npm run deploy` - Deploy functions to Firebase
+- `npm run lint` - Run ESLint
