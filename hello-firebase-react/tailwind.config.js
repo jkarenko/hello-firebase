@@ -80,9 +80,9 @@ module.exports = {
           },
           colors: {
             background: {
-              DEFAULT: "#09090b",
+              DEFAULT: "#27272a",
               100: "#18181b",
-              200: "#27272a",
+              200: "#09090b",
             },
             foreground: {
               DEFAULT: "#ECEDEE",
