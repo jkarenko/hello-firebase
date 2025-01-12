@@ -22,7 +22,7 @@ const DeleteModal = ({ isOpen, onClose, onConfirm, isLoading }: DeleteModalProps
         Are you sure you want to delete this comment? This action cannot be undone.
       </ModalBody>
       <ModalFooter>
-        <Button variant="light" onPress={onClose}>
+        <Button variant="flat" onPress={onClose}>
           Cancel
         </Button>
         <Button 
@@ -51,7 +51,7 @@ const UnresolveModal = ({ isOpen, onClose, onConfirm, resolvedByName }: Unresolv
         <p>This comment was resolved by {resolvedByName}. Are you sure you want to unresolve it?</p>
       </ModalBody>
       <ModalFooter>
-        <Button variant="light" onPress={onClose} size="sm">
+        <Button variant="flat" onPress={onClose} size="sm">
           Cancel
         </Button>
         <Button 
@@ -253,7 +253,7 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
                       </span>
                       <Button
                         size="sm"
-                        variant="light"
+                        variant="flat"
                         onClick={() => onTimeRangeClick({
                           start: comment.startTimestamp,
                           end: comment.endTimestamp
@@ -284,7 +284,7 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
                         <Button
                           size="sm"
                           color="danger"
-                          variant="light"
+                          variant="flat"
                           onClick={() => handleDeleteClick(comment.id)}
                           startContent={<TrashIcon className="w-4 h-4" />}
                         >

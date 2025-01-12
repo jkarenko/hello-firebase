@@ -430,7 +430,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           <div className="flex flex-col gap-8">
             <div className="text-left">
               <Button
-                variant="light"
+                variant="flat"
                 color="primary"
                 onPress={onBack}
                 className="px-0 -ml-2"
@@ -454,7 +454,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           <div className="flex flex-col gap-8">
             <div className="text-left">
               <Button
-                variant="light"
+                variant="flat"
                 color="primary"
                 onPress={onBack}
                 className="px-0 -ml-2"
@@ -482,7 +482,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           <div className="flex flex-col gap-8">
             <div className="text-left">
               <Button
-                variant="light"
+                variant="flat"
                 color="primary"
                 onPress={onBack}
                 className="px-0 -ml-2"
@@ -509,7 +509,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
         {/* Header section with back button and project actions */}
         <div className="flex justify-between items-center">
           <Button
-            variant="light"
+            variant="flat"
             color="primary"
             onPress={onBack}
             className="w-fit"

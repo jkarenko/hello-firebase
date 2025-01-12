@@ -204,7 +204,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
                 <span>You have {collaborators.find(c => c.email === currentUserEmail)?.isEditor ? "editor" : "viewer"} access</span>
                 <Button
                   color="danger"
-                  variant="light"
+                  variant="flat"
                   onPress={() => leaveConfirmModal.onOpen()}
                   size="sm"
                 >
@@ -272,7 +272,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
                             </Switch>
                             <Button
                               isIconOnly
-                              variant="light"
+                              variant="flat"
                               color="danger"
                               onPress={() => handleRemoveCollaborator(collaborator.email)}
                             >
@@ -313,7 +313,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               <p>Are you sure you want to remove {collaboratorToRemove} from this project?</p>
               <div className="flex justify-end gap-2">
                 <Button 
-                  variant="light" 
+                  variant="flat" 
                   onPress={() => {
                     confirmModal.onClose();
                     setCollaboratorToRemove(null);
@@ -348,7 +348,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               <p>Are you sure you want to leave this project? You'll lose access to all project content.</p>
               <div className="flex justify-end gap-2">
                 <Button 
-                  variant="light" 
+                  variant="flat" 
                   onPress={leaveConfirmModal.onClose}
                   autoFocus
                 >

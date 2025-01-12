@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure, Divider } from "@nextui-org/react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, useDisclosure, Divider, Card, CardBody } from "@nextui-org/react";
 import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
@@ -149,17 +149,20 @@ const ProjectList = () => {
               projects
                 .filter(p => !p.isCollaborator)
                 .map((project) => (
-                  <div
+                  <Card
                     key={project.id}
-                    className="bg-background p-5 rounded-lg shadow-sm cursor-pointer transition duration-200 transform hover:-translate-y-0.5 hover:shadow-md"
-                    onClick={() => navigate(`/project/${project.id}`)}
+                    isPressable
+                    onPress={() => navigate(`/project/${project.id}`)}
+                    className="w-full transition duration-200 hover:-translate-y-0.5"
                   >
-                    <h2 className="text-lg font-semibold text-foreground mb-2">{project.name}</h2>
-                    <p className="text-foreground-50">
-                      {project.versions.length} version
-                      {project.versions.length === 1 ? '' : 's'}
-                    </p>
-                  </div>
+                    <CardBody className="p-5">
+                      <h2 className="text-lg font-semibold text-foreground mb-2">{project.name}</h2>
+                      <p className="text-foreground-50">
+                        {project.versions.length} version
+                        {project.versions.length === 1 ? '' : 's'}
+                      </p>
+                    </CardBody>
+                  </Card>
                 ))
             )}
           </div>
@@ -181,17 +184,20 @@ const ProjectList = () => {
               projects
                 .filter(p => p.isCollaborator && p.collaboratorRole !== "pending")
                 .map((project) => (
-                  <div
+                  <Card
                     key={project.id}
-                    className="bg-background p-5 rounded-lg shadow-sm cursor-pointer transition duration-200 transform hover:-translate-y-0.5 hover:shadow-md"
-                    onClick={() => navigate(`/project/${project.id}`)}
+                    isPressable
+                    onPress={() => navigate(`/project/${project.id}`)}
+                    className="w-full transition duration-200 hover:-translate-y-0.5"
                   >
-                    <h2 className="text-lg font-semibold text-foreground mb-2">{project.name}</h2>
-                    <p className="text-foreground-50">
-                      {project.versions.length} version
-                      {project.versions.length === 1 ? '' : 's'}
-                    </p>
-                  </div>
+                    <CardBody className="p-5">
+                      <h2 className="text-lg font-semibold text-foreground mb-2">{project.name}</h2>
+                      <p className="text-foreground-50">
+                        {project.versions.length} version
+                        {project.versions.length === 1 ? '' : 's'}
+                      </p>
+                    </CardBody>
+                  </Card>
                 ))
             )}
           </div>
@@ -210,7 +216,7 @@ const ProjectList = () => {
             />
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={onClose}>
+            <Button variant="flat" onPress={onClose}>
               Cancel
             </Button>
             <Button 

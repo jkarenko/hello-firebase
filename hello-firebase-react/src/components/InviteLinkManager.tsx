@@ -132,7 +132,7 @@ const InviteLinkManager = ({ projectId, isOwner, isEditor }: InviteLinkManagerPr
   }
 
   if (isLoading) {
-    return <div className="text-sm text-default-500">Loading invite links...</div>;
+    return <div className="text-sm text-foreground-500">Loading invite links...</div>;
   }
 
   return (
@@ -219,24 +219,24 @@ const InviteLinkManager = ({ projectId, isOwner, isEditor }: InviteLinkManagerPr
                   {link.isEditor ? "Editor" : "Viewer"}
                 </Chip>
                 <Tooltip content={formatExpiry(link.expiresAt)}>
-                  <ClockIcon className="w-4 h-4 text-default-400" />
+                  <ClockIcon className="w-4 h-4 text-foreground-400" />
                 </Tooltip>
                 <Tooltip content={`${link.usedBy.length}${link.maxUses ? `/${link.maxUses}` : ''} uses`}>
-                  <UserGroupIcon className="w-4 h-4 text-default-400" />
+                  <UserGroupIcon className="w-4 h-4 text-foreground-400" />
                 </Tooltip>
               </div>
             </div>
             <div className="flex gap-2">
               <Button
                 isIconOnly
-                variant="light"
+                variant="flat"
                 onPress={() => copyToClipboard(link.token)}
               >
                 <ClipboardDocumentIcon className="w-4 h-4" />
               </Button>
               <Button
                 isIconOnly
-                variant="light"
+                variant="flat"
                 color="danger"
                 onPress={() => handleRevokeLink(link.token)}
               >

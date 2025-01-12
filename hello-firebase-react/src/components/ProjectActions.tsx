@@ -180,7 +180,7 @@ export const ProjectActions = ({
                 />
               </ModalBody>
               <ModalFooter>
-                <Button color="danger" variant="light" onPress={onClose}>
+                <Button color="danger" variant="flat" onPress={onClose}>
                   Cancel
                 </Button>
                 <Button 
@@ -207,7 +207,7 @@ export const ProjectActions = ({
             )}
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={deleteModal.onClose}>
+            <Button variant="flat" onPress={deleteModal.onClose}>
               Cancel
             </Button>
             <Button 
@@ -230,7 +230,7 @@ export const ProjectActions = ({
             <p className="text-danger">This action cannot be undone. All versions and comments will be permanently deleted.</p>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={deleteProjectModal.onClose}>
+            <Button variant="flat" onPress={deleteProjectModal.onClose}>
               Cancel
             </Button>
             <Button 
