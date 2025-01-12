@@ -28,11 +28,26 @@ module.exports = {
             // Semantic tokens
             background: {
               DEFAULT: "#ffffff",
+              100: "#f3f4f6",
+              200: "#e5e7eb",
             },
             foreground: {
               DEFAULT: "#11181C",
               50: "#687076",
               100: "#11181C",
+            },
+            divider: {
+              DEFAULT: "#e5e7eb",
+            },
+            danger: {
+              DEFAULT: "#dc2626",
+              50: "#fef2f2",
+              foreground: "#ffffff",
+            },
+            success: {
+              DEFAULT: "#16a34a",
+              50: "#f0fdf4",
+              foreground: "#ffffff",
             },
             primary: {
               50: "#F0F1FE",
@@ -66,11 +81,26 @@ module.exports = {
           colors: {
             background: {
               DEFAULT: "#09090b",
+              100: "#18181b",
+              200: "#27272a",
             },
             foreground: {
               DEFAULT: "#ECEDEE",
               50: "#9BA1A6",
               100: "#ECEDEE",
+            },
+            divider: {
+              DEFAULT: "#27272a",
+            },
+            danger: {
+              DEFAULT: "#dc2626",
+              50: "#450a0a",
+              foreground: "#ffffff",
+            },
+            success: {
+              DEFAULT: "#16a34a",
+              50: "#052e16",
+              foreground: "#ffffff",
             },
             primary: {
               50: "#1F1941",

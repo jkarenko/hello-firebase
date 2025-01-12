@@ -4,8 +4,9 @@ import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Badge } 
 import { useEffect, useState } from 'react';
 import PendingInvites from './PendingInvites';
 import { eventEmitter, PROJECTS_UPDATED } from '../utils/events';
-import { InboxIcon } from '@heroicons/react/24/outline';
+import { InboxIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { handleFirstTimeUser, useUserSettings } from '../utils/user';
+import { useTheme } from 'next-themes';
 
 interface AuthProps {
   user: User | null;
@@ -17,6 +18,7 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
   const [pendingCount, setPendingCount] = useState(0);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const { settings } = useUserSettings(user);
+  const { theme, setTheme } = useTheme();
   
   console.log('Auth component render:', { user, settings });
 
@@ -141,6 +143,13 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
                 onPress={() => setIsInboxOpen(true)}
               >
                 Inbox
+              </DropdownItem>
+              <DropdownItem
+                key="theme"
+                startContent={theme === 'dark' ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
+                onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              >
+                Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode
               </DropdownItem>
               <DropdownItem key="logout" className="text-danger" color="danger" onPress={handleLogout}>
                 Log Out
