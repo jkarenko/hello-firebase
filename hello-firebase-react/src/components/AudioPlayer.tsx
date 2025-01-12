@@ -513,11 +513,11 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           size="lg"
           isIconOnly
           radius="full"
-          className="w-16 h-16 min-w-[64px] p-0"
+          className="w-16 h-16 min-w-[64px] p-0 bg-transparent hover:bg-primary/10"
         >
           {isPlaying ? 
-            <PauseCircleIcon className="w-16 h-16 text-primary-foreground" /> : 
-            <PlayCircleIcon className="w-16 h-16 text-primary-foreground" />
+            <PauseCircleIcon className="w-16 h-16 text-primary" /> : 
+            <PlayCircleIcon className="w-16 h-16 text-primary" />
           }
         </Button>
 

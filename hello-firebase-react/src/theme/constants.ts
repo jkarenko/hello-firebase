@@ -1,5 +1,5 @@
 export const cardStyles = {
-  base: "bg-white p-3 rounded-xl",
+  base: "bg-background p-3 rounded-xl",
   header: "text-primary text-xl font-semibold mb-4 p-0",
   body: "text-foreground-50 p-0",
 } as const;

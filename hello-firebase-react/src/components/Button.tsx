@@ -4,17 +4,16 @@ import { buttonStyles } from "../theme/constants";
 
 type ButtonVariant = "primary" | "secondary";
 
-interface ButtonProps extends ComponentProps<typeof NextUIButton> {
+type ButtonProps = Omit<ComponentProps<typeof NextUIButton>, "variant"> & {
   variant?: ButtonVariant;
-}
+};
 
-export const Button = ({ variant = "primary", className = "", color, ...props }: ButtonProps) => {
+export const Button = ({ variant = "primary", className, ...props }: ButtonProps) => {
   return (
     <NextUIButton 
       {...props} 
-      color={color || undefined}
       variant="solid"
-      className={`${buttonStyles.base} ${buttonStyles[variant]} ${className}`}
+      className={`${buttonStyles.base} ${buttonStyles[variant]} ${className || ''}`}
     >
       {props.children}
     </NextUIButton>

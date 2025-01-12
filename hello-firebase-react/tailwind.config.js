@@ -16,7 +16,7 @@ module.exports = {
       themes: {
         light: {
           layout: {
-            spacingUnit: 4, // 4px
+            spacingUnit: 4,
             disabledOpacity: 0.5,
             radius: {
               small: "0.25rem",
@@ -25,11 +25,10 @@ module.exports = {
             },
           },
           colors: {
-            // Semantic tokens
             background: {
-              DEFAULT: "#e8e8e8",
+              DEFAULT: "#ffffff",
               100: "#f3f4f6",
-              200: "#e5e7eb",
+              200: "#e8e8e8",
             },
             foreground: {
               DEFAULT: "#11181C",
@@ -50,16 +49,16 @@ module.exports = {
               foreground: "#ffffff",
             },
             primary: {
-              50: "#F0F1FE",
-              100: "#E1E3FD",
-              200: "#C4C7FB",
-              300: "#A6ABF9",
-              400: "#898FF7",
-              500: "#6366f1",
-              600: "#4f46e5",
-              700: "#372D9C",
-              800: "#2B236F",
-              900: "#1F1941",
+              50: "#e6f8fb",
+              100: "#ccf1f7",
+              200: "#99e3ef",
+              300: "#66d5e7",
+              400: "#33c7df",
+              500: "#09b6d1",
+              600: "#0892a7",
+              700: "#066d7d",
+              800: "#044954",
+              900: "#02242a",
               DEFAULT: "#09b6d1",
               foreground: "#ffffff",
             },
@@ -80,9 +79,9 @@ module.exports = {
           },
           colors: {
             background: {
-              DEFAULT: "#27272a",
-              100: "#18181b",
-              200: "#09090b",
+              200: "#18181b",
+              100: "#27272a",
+              DEFAULT: "#333338",
             },
             foreground: {
               DEFAULT: "#ECEDEE",
@@ -90,7 +89,7 @@ module.exports = {
               100: "#ECEDEE",
             },
             divider: {
-              DEFAULT: "#27272a",
+              DEFAULT: "#333338",
             },
             danger: {
               DEFAULT: "#dc2626",
@@ -103,16 +102,16 @@ module.exports = {
               foreground: "#ffffff",
             },
             primary: {
-              50: "#1F1941",
-              100: "#2B236F",
-              200: "#372D9C",
-              300: "#4338CA",
-              400: "#4f46e5",
-              500: "#6366f1",
-              600: "#898FF7",
-              700: "#A6ABF9",
-              800: "#C4C7FB",
-              900: "#E1E3FD",
+              900: "#e6f8fb",
+              800: "#ccf1f7",
+              700: "#99e3ef",
+              600: "#66d5e7",
+              500: "#33c7df",
+              400: "#09b6d1",
+              300: "#0892a7",
+              200: "#066d7d",
+              100: "#044954",
+              50: "#02242a",
               DEFAULT: "#09b6d1",
               foreground: "#ffffff",
             },
@@ -123,7 +122,6 @@ module.exports = {
         },
       },
       layout: {
-        // Base layout tokens
         fontSize: {
           tiny: "0.75rem",
           small: "0.875rem",
