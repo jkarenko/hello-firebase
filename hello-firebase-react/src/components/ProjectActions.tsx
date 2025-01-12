@@ -102,7 +102,7 @@ export const ProjectActions = ({
           <Button 
             isIconOnly
             variant="flat"
-            className="data-[hover]:bg-default-100"
+            className="data-[hover]:bg-background-100"
             aria-label="Project actions"
           >
             <EllipsisVerticalIcon className="w-6 h-6" />
@@ -112,7 +112,7 @@ export const ProjectActions = ({
           <DropdownItem
             key="share"
             description="Share this project with others"
-            startContent={<ShareIcon className="w-4 h-4 text-default-500" />}
+            startContent={<ShareIcon className="w-4 h-4 text-foreground-500" />}
             onPress={() => shareRef.current?.onOpen()}
           >
             Share Project
@@ -121,7 +121,7 @@ export const ProjectActions = ({
             <DropdownItem
               key="rename"
               description="Change project name"
-              startContent={<PencilIcon className="w-4 h-4 text-default-500" />}
+              startContent={<PencilIcon className="w-4 h-4 text-foreground-500" />}
               onPress={openRenameModal}
             >
               Rename Project

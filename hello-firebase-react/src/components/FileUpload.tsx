@@ -127,10 +127,10 @@ const FileUpload = ({ projectId, onUploadComplete, existingVersions }: FileUploa
       <div
         className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
           isDragging
-            ? 'border-brand-primary bg-brand-primary/10'
+            ? 'border-primary bg-primary/10'
             : showSuccess
             ? 'border-success bg-success/10'
-            : 'border-default-300 hover:border-brand-primary'
+            : 'border-divider hover:border-primary'
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -147,7 +147,7 @@ const FileUpload = ({ projectId, onUploadComplete, existingVersions }: FileUploa
         {showSuccess ? (
           <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-success animate-fade-in" />
         ) : (
-          <CloudArrowUpIcon className="w-12 h-12 mx-auto mb-4 text-default-400" />
+          <CloudArrowUpIcon className="w-12 h-12 mx-auto mb-4 text-foreground-400" />
         )}
         
         <div className="mb-4">
@@ -156,10 +156,10 @@ const FileUpload = ({ projectId, onUploadComplete, existingVersions }: FileUploa
           </p>
           {!showSuccess && (
             <>
-              <p className="text-xs text-default-400 mb-2">
+              <p className="text-xs text-foreground-400 mb-2">
                 {supportedFormatsDisplay}
               </p>
-              <p className="text-sm text-default-500 mb-1">
+              <p className="text-sm text-foreground-500 mb-1">
                 or
               </p>
             </>

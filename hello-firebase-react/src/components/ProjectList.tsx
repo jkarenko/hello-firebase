@@ -109,9 +109,9 @@ const ProjectList = () => {
 
   if (loading) {
     return (
-      <div className="project-section">
-        <h1 className="text-2xl text-default-900">Loading Projects...</h1>
-        <div className="loading-indicator text-default-600">
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold mb-6 text-foreground">Loading Projects...</h1>
+        <div className="text-foreground-50">
           Please wait while we load your projects...
         </div>
       </div>
@@ -120,17 +120,17 @@ const ProjectList = () => {
 
   if (error) {
     return (
-      <div className="project-section">
-        <h1 className="text-2xl text-default-900">Error</h1>
-        <div className="text-danger">{error}</div>
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold mb-6 text-foreground">Error</h1>
+        <div className="text-danger p-3 my-3 bg-danger-50 rounded-md text-sm">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="project-section" id="projectSection">
-      <div className="flex justify-between">
-        <h1 className="text-2xl text-default-900">My Projects</h1>
+    <div className="text-center" id="projectSection">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-semibold text-foreground">My Projects</h1>
         <Button 
           color="primary" 
           onPress={onOpen}
@@ -142,20 +142,20 @@ const ProjectList = () => {
 
       <div className="space-y-2">
         <div>
-          <div className="project-list" id="projectList">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 py-5 max-w-[1200px] mx-auto" id="projectList">
             {projects.filter(p => !p.isCollaborator).length === 0 ? (
-              <div className="no-projects">No projects available</div>
+              <div className="text-foreground-50">No projects available</div>
             ) : (
               projects
                 .filter(p => !p.isCollaborator)
                 .map((project) => (
                   <div
                     key={project.id}
-                    className="project-card"
+                    className="bg-background p-5 rounded-lg shadow-sm cursor-pointer transition duration-200 transform hover:-translate-y-0.5 hover:shadow-md"
                     onClick={() => navigate(`/project/${project.id}`)}
                   >
-                    <h2>{project.name}</h2>
-                    <p>
+                    <h2 className="text-lg font-semibold text-foreground mb-2">{project.name}</h2>
+                    <p className="text-foreground-50">
                       {project.versions.length} version
                       {project.versions.length === 1 ? '' : 's'}
                     </p>
@@ -166,28 +166,28 @@ const ProjectList = () => {
         </div>
       </div>
 
-      <Divider></Divider>
+      <Divider className="my-8" />
 
-      <div className="flex justify-between">
-        <h1 className="text-2xl text-default-900">Projects Shared With Me</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-semibold text-foreground">Projects Shared With Me</h1>
       </div>
       
       <div className="space-y-8">
         <div>
-          <div className="project-list">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 py-5 max-w-[1200px] mx-auto">
             {projects.filter(p => p.isCollaborator && p.collaboratorRole !== "pending").length === 0 ? (
-              <div className="no-projects">No shared projects</div>
+              <div className="text-foreground-50">No shared projects</div>
             ) : (
               projects
                 .filter(p => p.isCollaborator && p.collaboratorRole !== "pending")
                 .map((project) => (
                   <div
                     key={project.id}
-                    className="project-card"
+                    className="bg-background p-5 rounded-lg shadow-sm cursor-pointer transition duration-200 transform hover:-translate-y-0.5 hover:shadow-md"
                     onClick={() => navigate(`/project/${project.id}`)}
                   >
-                    <h2>{project.name}</h2>
-                    <p>
+                    <h2 className="text-lg font-semibold text-foreground mb-2">{project.name}</h2>
+                    <p className="text-foreground-50">
                       {project.versions.length} version
                       {project.versions.length === 1 ? '' : 's'}
                     </p>

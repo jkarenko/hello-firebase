@@ -568,8 +568,8 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
             className="w-16 h-16 min-w-[64px] p-0"
           >
             {isPlaying ? 
-              <PauseCircleIcon className="w-16 h-16 text-white" /> : 
-              <PlayCircleIcon className="w-16 h-16 text-white" />
+              <PauseCircleIcon className="w-16 h-16 text-primary-foreground" /> : 
+              <PlayCircleIcon className="w-16 h-16 text-primary-foreground" />
             }
           </Button>
 
@@ -580,7 +580,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
             </div>
 
             <div 
-              className="w-full h-2 bg-default-200 dark:bg-default-100 rounded-full cursor-pointer overflow-hidden"
+              className="w-full h-2 bg-background-200 dark:bg-background-100 rounded-full cursor-pointer overflow-hidden"
               onClick={handleProgressClick}
             >
               <div 

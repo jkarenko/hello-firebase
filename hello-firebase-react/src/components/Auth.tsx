@@ -91,9 +91,12 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
   };
 
   return (
-    <div className="auth-container">
+    <div className="flex items-center gap-4">
       {!user ? (
-        <button onClick={() => handleLogin(true)} className="auth-button">
+        <button 
+          onClick={() => handleLogin(true)} 
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground cursor-pointer transition-colors hover:bg-primary-600"
+        >
           Sign in with Google
         </button>
       ) : (
@@ -128,7 +131,7 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
                 textValue={user.email || ''}
               >
                 <p className="font-semibold">Signed in as</p>
-                <p className="font-semibold">{user.email}</p>
+                <p className="font-semibold text-foreground-50">{user.email}</p>
               </DropdownItem>
               <DropdownItem 
                 key="inbox" 
