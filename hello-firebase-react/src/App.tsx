@@ -1,11 +1,10 @@
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import ProjectList from './components/ProjectList';
 import AudioPlayer from './components/AudioPlayer';
 import JoinProject from './components/JoinProject';
 import LandingPage from './components/LandingPage';
 import Header from './components/Header';
 import { useAuth } from './hooks/useAuth';
-import './App.css';
 
 const ProjectView = () => {
   const { projectId } = useParams();
@@ -27,11 +26,15 @@ const App = () => {
   const { user, auth, provider, isAuthChecked, handleLogin } = useAuth();
 
   if (!isAuthChecked) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="app-container">
+    <div className="min-h-screen flex flex-col text-foreground bg-background-200">
       <Header 
         user={user}
         auth={auth}
@@ -40,7 +43,7 @@ const App = () => {
       />
 
       {user ? (
-        <main className="main-content">
+        <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 pt-16 pb-8">
           <Routes>
             <Route path="/" element={<ProjectList />} />
             <Route path="/project/:projectId" element={<ProjectView />} />

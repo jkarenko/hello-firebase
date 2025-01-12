@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Card, CardBody, Avatar, Button, Select, SelectItem, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@nextui-org/react";
+import { CardBody, Avatar, Button, Select, SelectItem, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@nextui-org/react";
+import { Card } from './Card';
 import { CheckCircleIcon, XCircleIcon, ChatBubbleLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useComments } from '../hooks/useComments';
 import { CommentWithUserInfo, CommentFilterBy, CommentSortBy, CommentTimeRange } from '../types/comments';
@@ -22,7 +23,7 @@ const DeleteModal = ({ isOpen, onClose, onConfirm, isLoading }: DeleteModalProps
         Are you sure you want to delete this comment? This action cannot be undone.
       </ModalBody>
       <ModalFooter>
-        <Button variant="light" onPress={onClose}>
+        <Button variant="flat" onPress={onClose}>
           Cancel
         </Button>
         <Button 
@@ -51,7 +52,7 @@ const UnresolveModal = ({ isOpen, onClose, onConfirm, resolvedByName }: Unresolv
         <p>This comment was resolved by {resolvedByName}. Are you sure you want to unresolve it?</p>
       </ModalBody>
       <ModalFooter>
-        <Button variant="light" onPress={onClose} size="sm">
+        <Button variant="flat" onPress={onClose} size="sm">
           Cancel
         </Button>
         <Button 
@@ -229,9 +230,9 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
       {filteredAndSortedComments.length === 0 ? (
         <Card className="w-full">
           <CardBody className="text-center py-8">
-            <ChatBubbleLeftIcon className="w-12 h-12 mx-auto text-default-400 mb-2" />
-            <p className="text-default-600">No comments yet</p>
-            <p className="text-sm text-default-400">Be the first to add a comment!</p>
+            <ChatBubbleLeftIcon className="w-12 h-12 mx-auto text-foreground-400 mb-2" />
+            <p className="text-foreground">No comments yet</p>
+            <p className="text-sm text-foreground-400">Be the first to add a comment!</p>
           </CardBody>
         </Card>
       ) : (
@@ -248,12 +249,13 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
                   <div className="flex-grow">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-semibold">{comment.createdByUser.displayName}</span>
-                      <span className="text-sm text-default-500">
+                      <span className="text-sm text-foreground-500">
                         {formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true })}
                       </span>
+                      <div className="flex-grow" />
                       <Button
                         size="sm"
-                        variant="light"
+                        variant="flat"
                         onClick={() => onTimeRangeClick({
                           start: comment.startTimestamp,
                           end: comment.endTimestamp
@@ -276,19 +278,20 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
                         {comment.resolved ? 'Resolved' : 'Mark Resolved'}
                       </Button>
                       {comment.resolved && comment.resolvedByUser && (
-                        <span className="text-xs text-default-500">
+                        <span className="text-xs text-foreground-500">
                           by {comment.resolvedByUser.displayName}
                         </span>
                       )}
+                      <div className="flex-grow" />
                       {comment.createdBy === userId && (
                         <Button
                           size="sm"
                           color="danger"
-                          variant="light"
+                          variant="flat"
+                          isIconOnly
                           onClick={() => handleDeleteClick(comment.id)}
-                          startContent={<TrashIcon className="w-4 h-4" />}
                         >
-                          Delete
+                          <TrashIcon className="w-4 h-4" />
                         </Button>
                       )}
                     </div>

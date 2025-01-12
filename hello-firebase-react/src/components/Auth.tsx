@@ -4,8 +4,9 @@ import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Badge } 
 import { useEffect, useState } from 'react';
 import PendingInvites from './PendingInvites';
 import { eventEmitter, PROJECTS_UPDATED } from '../utils/events';
-import { InboxIcon } from '@heroicons/react/24/outline';
+import { InboxIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { handleFirstTimeUser, useUserSettings } from '../utils/user';
+import { useTheme } from 'next-themes';
 
 interface AuthProps {
   user: User | null;
@@ -17,6 +18,7 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
   const [pendingCount, setPendingCount] = useState(0);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const { settings } = useUserSettings(user);
+  const { theme, setTheme } = useTheme();
   
   console.log('Auth component render:', { user, settings });
 
@@ -91,9 +93,12 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
   };
 
   return (
-    <div className="auth-container">
+    <div className="flex items-center gap-4">
       {!user ? (
-        <button onClick={() => handleLogin(true)} className="auth-button">
+        <button 
+          onClick={() => handleLogin(true)} 
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground cursor-pointer transition-colors hover:bg-primary-600"
+        >
           Sign in with Google
         </button>
       ) : (
@@ -128,7 +133,7 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
                 textValue={user.email || ''}
               >
                 <p className="font-semibold">Signed in as</p>
-                <p className="font-semibold">{user.email}</p>
+                <p className="font-semibold text-foreground-50">{user.email}</p>
               </DropdownItem>
               <DropdownItem 
                 key="inbox" 
@@ -138,6 +143,13 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
                 onPress={() => setIsInboxOpen(true)}
               >
                 Inbox
+              </DropdownItem>
+              <DropdownItem
+                key="theme"
+                startContent={theme === 'dark' ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
+                onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              >
+                Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode
               </DropdownItem>
               <DropdownItem key="logout" className="text-danger" color="danger" onPress={handleLogout}>
                 Log Out

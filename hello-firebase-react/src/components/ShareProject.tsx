@@ -200,11 +200,11 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               </Button>
             </div>
             {!isOwner && currentUserEmail && collaborators.some(c => c.email === currentUserEmail) && (
-              <div className="text-small text-default-500 flex items-center justify-between">
+              <div className="text-small text-foreground-500 flex items-center justify-between">
                 <span>You have {collaborators.find(c => c.email === currentUserEmail)?.isEditor ? "editor" : "viewer"} access</span>
                 <Button
                   color="danger"
-                  variant="light"
+                  variant="flat"
                   onPress={() => leaveConfirmModal.onOpen()}
                   size="sm"
                 >
@@ -251,14 +251,14 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               {/* Collaborators section */}
               {collaborators.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-default-700">People with access</h3>
+                  <h3 className="text-sm font-medium text-foreground">People with access</h3>
                   <div className="space-y-3">
                     {collaborators.map((collaborator) => (
                       <div key={collaborator.email} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-default-700">{collaborator.email}</span>
+                          <span className="text-sm text-foreground">{collaborator.email}</span>
                           {collaborator.isPending && (
-                            <span className="text-xs text-default-400">(Pending)</span>
+                            <span className="text-xs text-foreground-400">(Pending)</span>
                           )}
                         </div>
                         {isOwner && collaborator.email !== ownerEmail && (
@@ -272,7 +272,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
                             </Switch>
                             <Button
                               isIconOnly
-                              variant="light"
+                              variant="flat"
                               color="danger"
                               onPress={() => handleRemoveCollaborator(collaborator.email)}
                             >
@@ -313,7 +313,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               <p>Are you sure you want to remove {collaboratorToRemove} from this project?</p>
               <div className="flex justify-end gap-2">
                 <Button 
-                  variant="light" 
+                  variant="flat" 
                   onPress={() => {
                     confirmModal.onClose();
                     setCollaboratorToRemove(null);
@@ -348,7 +348,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               <p>Are you sure you want to leave this project? You'll lose access to all project content.</p>
               <div className="flex justify-end gap-2">
                 <Button 
-                  variant="light" 
+                  variant="flat" 
                   onPress={leaveConfirmModal.onClose}
                   autoFocus
                 >

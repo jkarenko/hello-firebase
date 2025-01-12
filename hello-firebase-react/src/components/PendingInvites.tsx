@@ -108,18 +108,18 @@ const PendingInvites = ({ onInviteAccepted, setPendingCount, isOpen, onOpenChang
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : pendingProjects.length === 0 ? (
-              <div className="text-center text-default-500 py-4">
+              <div className="text-center text-foreground-500 py-4">
                 No pending invitations
               </div>
             ) : (
               pendingProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="flex items-center justify-between p-4 bg-default-100 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-background-100 rounded-lg"
                 >
                   <div className="space-y-1">
                     <div className="font-medium">{project.name}</div>
-                    <div className="text-small text-default-500">
+                    <div className="text-small text-foreground-500">
                       from {project.ownerEmail || 'Unknown'}
                     </div>
                   </div>

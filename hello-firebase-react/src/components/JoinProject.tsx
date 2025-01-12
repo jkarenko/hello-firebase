@@ -58,7 +58,7 @@ const JoinProject = () => {
       <div className="flex justify-center items-center min-h-screen p-4">
         <Card className="max-w-md w-full p-6 text-center">
           <h1 className="text-xl font-semibold mb-4">Unable to Join Project</h1>
-          <p className="text-danger mb-6">{error}</p>
+          <p className="text-foreground-500 mb-6">{error}</p>
           <Button
             color="primary"
             onPress={() => navigate('/')}
@@ -75,7 +75,7 @@ const JoinProject = () => {
       <div className="flex justify-center items-center min-h-screen p-4">
         <Card className="max-w-md w-full p-6 text-center">
           <h1 className="text-xl font-semibold mb-4">Sign in to Join Project</h1>
-          <p className="text-default-600 mb-6">
+          <p className="text-foreground-500 mb-6">
             You need to sign in or create an account to join this project.
           </p>
           <div className="flex justify-center gap-4">

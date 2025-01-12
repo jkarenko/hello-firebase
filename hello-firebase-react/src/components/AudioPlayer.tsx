@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Button, Select, SelectItem, Card, CardBody, Chip, Spinner, Divider } from "@nextui-org/react";
+import { Button, Select, SelectItem, Spinner, Divider } from "@nextui-org/react";
 import { PlayCircleIcon, PauseCircleIcon } from '@heroicons/react/24/solid';
 import { AudioCache } from '../utils/AudioCache';
 import FileUpload from './FileUpload';
@@ -425,221 +425,164 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
 
   if (loading) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardBody className="p-8">
-          <div className="flex flex-col gap-8">
-            <div className="text-left">
-              <Button
-                variant="light"
-                color="primary"
-                onPress={onBack}
-                className="px-0 -ml-2"
-              >
-                ← Back to Projects
-              </Button>
-            </div>
-            <div className="flex justify-center items-center">
-              <Spinner label="Loading Audio Player..." color="primary" />
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold mb-6 text-foreground">Loading Audio Player...</h1>
+        <div className="text-foreground-50">
+          Please wait while we load your audio...
+        </div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardBody className="p-8">
-          <div className="flex flex-col gap-8">
-            <div className="text-left">
-              <Button
-                variant="light"
-                color="primary"
-                onPress={onBack}
-                className="px-0 -ml-2"
-              >
-                ← Back to Projects
-              </Button>
-            </div>
-            <Chip
-              color="danger"
-              variant="flat"
-              className="w-full"
-            >
-              {error}
-            </Chip>
-          </div>
-        </CardBody>
-      </Card>
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold mb-6 text-foreground">Error</h1>
+        <div className="text-danger p-3 my-3 bg-danger-50 rounded-md text-sm">{error}</div>
+      </div>
     );
   }
 
   if (!project) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardBody className="p-8">
-          <div className="flex flex-col gap-8">
-            <div className="text-left">
-              <Button
-                variant="light"
-                color="primary"
-                onPress={onBack}
-                className="px-0 -ml-2"
-              >
-                ← Back to Projects
-              </Button>
-            </div>
-            <Chip
-              color="danger"
-              variant="flat"
-              className="w-full"
-            >
-              Project not found
-            </Chip>
-          </div>
-        </CardBody>
-      </Card>
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold mb-6 text-foreground">Error</h1>
+        <div className="text-danger p-3 my-3 bg-danger-50 rounded-md text-sm">Project not found</div>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardBody className="flex flex-col gap-8 p-8">
-        {/* Header section with back button and project actions */}
-        <div className="flex justify-between items-center">
-          <Button
-            variant="light"
-            color="primary"
-            onPress={onBack}
-            className="w-fit"
-            startContent={<span>‹</span>}
-          >
-            Back to projects
-          </Button>
-          {project && (
-            <ProjectActions
-              projectId={projectId}
-              projectName={project.name}
-              selectedVersion={selectedVersion}
-              commentCount={versionCommentCount}
-              isOwner={project.owner === getFirebaseAuth().currentUser?.uid}
-              onProjectRenamed={(newName) => setProject(prev => prev ? { ...prev, name: newName } : null)}
-              onVersionDeleted={handleUploadComplete}
-            />
-          )}
-        </div>
-
-        {/* Project title */}
-        <div className="flex items-center gap-2">
-          <h1 className="text-4xl font-normal text-left text-foreground">
-            {project?.name}
-          </h1>
-        </div>
-
-        {/* Version selector */}
-        {project?.versions.length > 0 && (
-          <div className="flex gap-4 items-end">
-            <Select
-              label="Version"
-              placeholder="Select a version"
-              selectedKeys={selectedVersion ? [selectedVersion] : []}
-              onChange={(e) => setSelectedVersion(e.target.value)}
-              className="flex-1"
-            >
-              {project.versions.map((version) => (
-                <SelectItem key={version.filename} value={version.filename}>
-                  {getDisplayName(version.filename)}
-                </SelectItem>
-              ))}
-            </Select>
-          </div>
+    <div className="w-full max-w-4xl mx-auto space-y-8">
+      {/* Header section with back button and project actions */}
+      <div className="flex justify-between items-center">
+        <Button
+          variant="flat"
+          color="primary"
+          onPress={onBack}
+          className="w-fit"
+          startContent={<span>‹</span>}
+        >
+          Back to projects
+        </Button>
+        {project && (
+          <ProjectActions
+            projectId={projectId}
+            projectName={project.name}
+            selectedVersion={selectedVersion}
+            commentCount={versionCommentCount}
+            isOwner={project.owner === getFirebaseAuth().currentUser?.uid}
+            onProjectRenamed={(newName) => setProject(prev => prev ? { ...prev, name: newName } : null)}
+            onVersionDeleted={handleUploadComplete}
+          />
         )}
+      </div>
 
-        {/* Player controls */}
-        <div className="flex items-center gap-6">
-          <Button
-            color="primary"
-            onPress={togglePlayPause}
-            isDisabled={!selectedVersion}
-            size="lg"
-            isIconOnly
-            radius="full"
-            className="w-16 h-16 min-w-[64px] p-0"
+      {/* Project title */}
+      <div className="flex items-center gap-2">
+        <h1 className="text-4xl font-normal text-left text-foreground">
+          {project?.name}
+        </h1>
+      </div>
+
+      {/* Version selector */}
+      {project?.versions.length > 0 && (
+        <div className="flex gap-4 items-end">
+          <Select
+            label="Version"
+            placeholder="Select a version"
+            selectedKeys={selectedVersion ? [selectedVersion] : []}
+            onChange={(e) => setSelectedVersion(e.target.value)}
+            className="flex-1"
           >
-            {isPlaying ? 
-              <PauseCircleIcon className="w-16 h-16 text-white" /> : 
-              <PlayCircleIcon className="w-16 h-16 text-white" />
-            }
-          </Button>
+            {project.versions.map((version) => (
+              <SelectItem key={version.filename} value={version.filename}>
+                {getDisplayName(version.filename)}
+              </SelectItem>
+            ))}
+          </Select>
+        </div>
+      )}
 
-          <div className="flex-1 flex flex-col gap-2">
-            <div className="flex justify-between text-base">
-              <span className="text-foreground-500">{formatTime(currentTime)}</span>
-              <span className="text-foreground-500">{formatTime(duration)}</span>
-            </div>
+      {/* Player controls */}
+      <div className="flex items-center gap-6">
+        <Button
+          color="primary"
+          onPress={togglePlayPause}
+          isDisabled={!selectedVersion}
+          size="lg"
+          isIconOnly
+          radius="full"
+          className="w-16 h-16 min-w-[64px] p-0 bg-transparent hover:bg-primary/10"
+        >
+          {isPlaying ? 
+            <PauseCircleIcon className="w-16 h-16 text-primary" /> : 
+            <PlayCircleIcon className="w-16 h-16 text-primary" />
+          }
+        </Button>
 
+        <div className="flex-1 flex flex-col gap-2">
+          <div className="flex justify-between text-base">
+            <span className="text-foreground-500">{formatTime(currentTime)}</span>
+            <span className="text-foreground-500">{formatTime(duration)}</span>
+          </div>
+
+          <div 
+            className="w-full h-2 bg-background-200 dark:bg-background-100 rounded-full cursor-pointer overflow-hidden"
+            onClick={handleProgressClick}
+          >
             <div 
-              className="w-full h-2 bg-default-200 dark:bg-default-100 rounded-full cursor-pointer overflow-hidden"
-              onClick={handleProgressClick}
-            >
-              <div 
-                className="h-full bg-primary transition-[width] duration-100"
-                style={{ 
-                  width: `${(currentTime / duration) * 100 || 0}%`,
-                  transition: isPlaying ? 'none' : 'width 0.1s linear'
-                }}
-              />
-            </div>
+              className="h-full bg-primary transition-[width] duration-100"
+              style={{ 
+                width: `${(currentTime / duration) * 100 || 0}%`,
+                transition: isPlaying ? 'none' : 'width 0.1s linear'
+              }}
+            />
           </div>
         </div>
+      </div>
 
-        {/* File Upload */}
-        <FileUpload 
-          projectId={projectId} 
-          onUploadComplete={handleUploadComplete} 
-          existingVersions={project?.versions.map(v => v.filename) || []}
-        />
+      {/* File Upload */}
+      <FileUpload 
+        projectId={projectId} 
+        onUploadComplete={handleUploadComplete} 
+        existingVersions={project?.versions.map(v => v.filename) || []}
+      />
 
-        {error && (
-          <Chip
-            color="danger"
-            variant="flat"
-            className="w-full"
-          >
-            {error}
-          </Chip>
-        )}
+      {error && (
+        <div className="text-danger p-3 my-3 bg-danger-50 rounded-md text-sm">
+          {error}
+        </div>
+      )}
 
-        {loading && (
-          <div className="flex justify-center">
-            <Spinner color="primary" />
+      {loading && (
+        <div className="flex justify-center">
+          <Spinner color="primary" />
+        </div>
+      )}
+
+      {/* Comments section */}
+      {selectedVersion && (
+        <>
+          <Divider className="my-4" />
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold">Comments</h2>
+            <CommentForm
+              projectId={projectId}
+              versionFilename={selectedVersion}
+              currentTimeRange={commentTimeRange}
+              onCommentCreate={handleCommentCreate}
+            />
+            <CommentList
+              projectId={projectId}
+              versionFilename={selectedVersion}
+              onTimeRangeClick={handleTimeRangeClick}
+              onCommentsLoaded={handleCommentsLoaded}
+            />
           </div>
-        )}
-
-        {/* Comments section */}
-        {selectedVersion && (
-          <>
-            <Divider className="my-4" />
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold">Comments</h2>
-              <CommentForm
-                projectId={projectId}
-                versionFilename={selectedVersion}
-                currentTimeRange={commentTimeRange}
-                onCommentCreate={handleCommentCreate}
-              />
-              <CommentList
-                projectId={projectId}
-                versionFilename={selectedVersion}
-                onTimeRangeClick={handleTimeRangeClick}
-                onCommentsLoaded={handleCommentsLoaded}
-              />
-            </div>
-          </>
-        )}
-      </CardBody>
-    </Card>
+        </>
+      )}
+    </div>
   );
 };
 

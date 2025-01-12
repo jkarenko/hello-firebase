@@ -6,6 +6,7 @@ import './index.css';
 import App from './App';
 import { initializeFirebase } from './firebase';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 // Initialize Firebase first
 initializeFirebase();
@@ -24,8 +25,10 @@ if (isDevelopment) {
   root.render(
     <BrowserRouter>
       <NextUIProvider>
-        <App />
-        <Toaster richColors closeButton position="top-right" />
+        <NextThemesProvider attribute="class" defaultTheme="light">
+          <App />
+          <Toaster richColors closeButton position="top-right" />
+        </NextThemesProvider>
       </NextUIProvider>
     </BrowserRouter>
   );
@@ -34,8 +37,10 @@ if (isDevelopment) {
     <React.StrictMode>
       <BrowserRouter>
         <NextUIProvider>
-          <App />
-          <Toaster richColors closeButton position="top-right" />
+          <NextThemesProvider attribute="class" defaultTheme="light">
+            <App />
+            <Toaster richColors closeButton position="top-right" />
+          </NextThemesProvider>
         </NextUIProvider>
       </BrowserRouter>
     </React.StrictMode>
