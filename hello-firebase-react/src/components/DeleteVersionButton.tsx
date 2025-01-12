@@ -44,10 +44,12 @@ export const DeleteVersionButton = ({ projectId, versionFilename, commentCount, 
       <Button
         color="danger"
         variant="light"
-        startContent={<TrashIcon className="w-4 h-4" />}
-        onPress={() => setIsOpen(true)}
+        size="sm"
+        isIconOnly
+        onClick={() => setIsOpen(true)}
+        className="text-danger hover:text-danger-600"
       >
-        Delete
+        <TrashIcon className="w-4 h-4" />
       </Button>
 
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)}>

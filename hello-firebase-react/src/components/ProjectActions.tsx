@@ -112,7 +112,7 @@ export const ProjectActions = ({
           <DropdownItem
             key="share"
             description="Share this project with others"
-            startContent={<ShareIcon className="w-4 h-4" />}
+            startContent={<ShareIcon className="w-4 h-4 text-default-500" />}
             onPress={() => shareRef.current?.onOpen()}
           >
             Share Project
@@ -121,7 +121,7 @@ export const ProjectActions = ({
             <DropdownItem
               key="rename"
               description="Change project name"
-              startContent={<PencilIcon className="w-4 h-4" />}
+              startContent={<PencilIcon className="w-4 h-4 text-default-500" />}
               onPress={openRenameModal}
             >
               Rename Project

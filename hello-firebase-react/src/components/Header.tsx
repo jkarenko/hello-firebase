@@ -13,10 +13,10 @@ const Header = ({ user, auth, provider, variant = 'app' }: HeaderProps) => {
   const navigate = useNavigate();
   
   return (
-    <header className={`app-header ${variant === 'landing' ? 'bg-transparent absolute top-0 left-0 right-0' : ''}`}>
+    <header className={`app-header ${variant === 'landing' ? 'bg-transparent absolute top-0 left-0 right-0' : 'bg-background'}`}>
       <div className="header-content">
         <div 
-          className={`header-title cursor-pointer ${variant === 'landing' ? 'text-white' : ''}`}
+          className={`header-title cursor-pointer ${variant === 'landing' ? 'text-white' : 'text-brand-primary'}`}
           onClick={() => navigate('/')}
         >
           Echoherence

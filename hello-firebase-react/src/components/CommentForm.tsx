@@ -54,7 +54,7 @@ export const CommentForm = ({ projectId, versionFilename, currentTimeRange, onCo
 
   return (
     <div className="space-y-2">
-      <div className="text-sm text-gray-500">
+      <div className="text-sm text-default-500">
         Commenting at: {formatTimestamp(currentTimeRange.start)}
         {currentTimeRange.start !== currentTimeRange.end && 
           ` - ${formatTimestamp(currentTimeRange.end)}`}

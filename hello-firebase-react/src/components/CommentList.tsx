@@ -229,9 +229,9 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
       {filteredAndSortedComments.length === 0 ? (
         <Card className="w-full">
           <CardBody className="text-center py-8">
-            <ChatBubbleLeftIcon className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-            <p className="text-gray-600">No comments yet</p>
-            <p className="text-sm text-gray-400">Be the first to add a comment!</p>
+            <ChatBubbleLeftIcon className="w-12 h-12 mx-auto text-default-400 mb-2" />
+            <p className="text-default-600">No comments yet</p>
+            <p className="text-sm text-default-400">Be the first to add a comment!</p>
           </CardBody>
         </Card>
       ) : (
@@ -248,7 +248,7 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
                   <div className="flex-grow">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-semibold">{comment.createdByUser.displayName}</span>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-default-500">
                         {formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true })}
                       </span>
                       <Button
@@ -276,7 +276,7 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
                         {comment.resolved ? 'Resolved' : 'Mark Resolved'}
                       </Button>
                       {comment.resolved && comment.resolvedByUser && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-default-500">
                           by {comment.resolvedByUser.displayName}
                         </span>
                       )}

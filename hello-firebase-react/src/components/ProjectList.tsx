@@ -110,8 +110,8 @@ const ProjectList = () => {
   if (loading) {
     return (
       <div className="project-section">
-        <h1>Loading Projects...</h1>
-        <div className="loading-indicator">
+        <h1 className="text-2xl text-default-900">Loading Projects...</h1>
+        <div className="loading-indicator text-default-600">
           Please wait while we load your projects...
         </div>
       </div>
@@ -121,8 +121,8 @@ const ProjectList = () => {
   if (error) {
     return (
       <div className="project-section">
-        <h1>Error</h1>
-        <div className="error">{error}</div>
+        <h1 className="text-2xl text-default-900">Error</h1>
+        <div className="text-danger">{error}</div>
       </div>
     );
   }
@@ -130,7 +130,7 @@ const ProjectList = () => {
   return (
     <div className="project-section" id="projectSection">
       <div className="flex justify-between">
-        <h1 className="text-2xl">My Projects</h1>
+        <h1 className="text-2xl text-default-900">My Projects</h1>
         <Button 
           color="primary" 
           onPress={onOpen}
@@ -169,7 +169,7 @@ const ProjectList = () => {
       <Divider></Divider>
 
       <div className="flex justify-between">
-        <h1 className="text-2xl">Projects Shared With Me</h1>
+        <h1 className="text-2xl text-default-900">Projects Shared With Me</h1>
       </div>
       
       <div className="space-y-8">

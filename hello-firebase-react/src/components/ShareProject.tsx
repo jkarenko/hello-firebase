@@ -251,12 +251,12 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               {/* Collaborators section */}
               {collaborators.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium">People with access</h3>
+                  <h3 className="text-sm font-medium text-default-700">People with access</h3>
                   <div className="space-y-3">
                     {collaborators.map((collaborator) => (
                       <div key={collaborator.email} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm">{collaborator.email}</span>
+                          <span className="text-sm text-default-700">{collaborator.email}</span>
                           {collaborator.isPending && (
                             <span className="text-xs text-default-400">(Pending)</span>
                           )}
