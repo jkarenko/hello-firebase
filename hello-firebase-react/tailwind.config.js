@@ -36,16 +36,16 @@ module.exports = {
               100: "#11181C",
             },
             divider: {
-              DEFAULT: "#e5e7eb",
+              DEFAULT: "#e0f2f5",
             },
             danger: {
-              DEFAULT: "#dc2626",
-              50: "#fef2f2",
+              DEFAULT: "#e11d48",
+              50: "#fff1f2",
               foreground: "#ffffff",
             },
             success: {
-              DEFAULT: "#16a34a",
-              50: "#f0fdf4",
+              DEFAULT: "#0d9488",
+              50: "#f0fdfa",
               foreground: "#ffffff",
             },
             primary: {
@@ -89,16 +89,16 @@ module.exports = {
               100: "#ECEDEE",
             },
             divider: {
-              DEFAULT: "#333338",
+              DEFAULT: "#044954",
             },
             danger: {
-              DEFAULT: "#dc2626",
-              50: "#450a0a",
+              DEFAULT: "#e11d48",
+              50: "#4c0519",
               foreground: "#ffffff",
             },
             success: {
-              DEFAULT: "#16a34a",
-              50: "#052e16",
+              DEFAULT: "#0d9488",
+              50: "#042f2e",
               foreground: "#ffffff",
             },
             primary: {
