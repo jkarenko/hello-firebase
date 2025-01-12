@@ -9,11 +9,11 @@ export default defineConfig({
     host: true,
     proxy: {
       "/getSongVersions": {
-        target: "http://127.0.0.1:5001/jkarenko-hello-firebase/us-central1",
+        target: "http://127.0.0.1:5001/echoherence/us-central1",
         changeOrigin: true,
       },
       "/getAudioUrl": {
-        target: "http://127.0.0.1:5001/jkarenko-hello-firebase/us-central1",
+        target: "http://127.0.0.1:5001/echoherence/us-central1",
         changeOrigin: true,
       },
     },

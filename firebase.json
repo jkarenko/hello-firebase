@@ -14,29 +14,45 @@
       ]
     }
   ],
-  "hosting": {
-    "site": "jkarenko-hello-firebase",
-    "public": "hello-firebase-react/dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "/getSongVersions",
-        "function": "getSongVersions"
-      },
-      {
-        "source": "/getAudioUrl",
-        "function": "getAudioUrl"
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  },
+  "hosting": [
+    {
+      "site": "echoherence",
+      "public": "hello-firebase-react/dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/getSongVersions",
+          "function": "getSongVersions"
+        },
+        {
+          "source": "/getAudioUrl",
+          "function": "getAudioUrl"
+        },
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "predeploy": [
+        "npm --prefix hello-firebase-react run build"
+      ]
+    },
+    {
+      "site": "jkarenko-hello-firebase",
+      "public": "hello-firebase-react/dist",
+      "redirects": [
+        {
+          "source": "/**",
+          "destination": "https://echoherence.com/:1",
+          "type": 301
+        }
+      ]
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"

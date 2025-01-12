@@ -20,9 +20,14 @@ const isDevelopment = HOST === "localhost" || HOST === "127.0.0.1";
 // Always use the same host for emulators as the one used to access the app
 const EMULATOR_HOST = HOST;
 
+// Redirect to echoherence.com if we're on the old domain
+if (!isDevelopment && HOST.includes("jkarenko-hello-firebase")) {
+  window.location.href = `https://echoherence.com${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyBH2W_CEsu_3srnmQPx3cm1HEQS46_gnIM",
-  authDomain: isDevelopment ? `${EMULATOR_HOST}:9099` : "jkarenko-hello-firebase.firebaseapp.com",
+  authDomain: isDevelopment ? `${EMULATOR_HOST}:9099` : "echoherence.com",
   projectId: "jkarenko-hello-firebase",
   storageBucket: isDevelopment ? `${EMULATOR_HOST}:9199` : "jkarenko-hello-firebase.firebasestorage.app",
   messagingSenderId: "380797680247",
@@ -37,7 +42,15 @@ export function initializeFirebase() {
 
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  functions = getFunctions(app);
+
+  // Add debug logging
+  console.log("Firebase Auth Configuration:", {
+    authDomain: firebaseConfig.authDomain,
+    currentUrl: window.location.href,
+    expectedRedirectUri: `${window.location.origin}/__/auth/handler`,
+  });
+
+  functions = getFunctions(app, "us-central1");
   firestore = getFirestore(app);
   storage = getStorage(app);
 
