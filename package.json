@@ -8,7 +8,7 @@
     "build:functions": "npm --prefix functions run build",
     "build:react": "npm --prefix hello-firebase-react run build",
     "build": "npm run build:functions && npm run build:react",
-    "dev:react": "npm --prefix hello-firebase-react run dev",
+    "dev:react": "npm --prefix hello-firebase-react run build -- --watch --mode development",
     "dev:functions": "npm --prefix functions run dev",
     "dev:emulator": "FIREBASE_APP_STORAGE=localhost:9199 GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit=./.emulator-data",
     "dev:watch": "concurrently --handle-input \"npm run dev:functions\" \"npm run dev:react\"",
