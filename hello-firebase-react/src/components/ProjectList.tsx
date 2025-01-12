@@ -133,9 +133,10 @@ const ProjectList = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold text-foreground">My Projects</h1>
         <Button 
+          variant="ghost" 
           color="primary" 
           onPress={onOpen}
-          className="px-4"
+          className="px-4 rounded-full"
         >
           Create New Project
         </Button>

@@ -27,7 +27,7 @@ module.exports = {
           colors: {
             // Semantic tokens
             background: {
-              DEFAULT: "#ffffff",
+              DEFAULT: "#e8e8e8",
               100: "#f3f4f6",
               200: "#e5e7eb",
             },
@@ -60,11 +60,11 @@ module.exports = {
               700: "#372D9C",
               800: "#2B236F",
               900: "#1F1941",
-              DEFAULT: "#6366f1",
+              DEFAULT: "#09b6d1",
               foreground: "#ffffff",
             },
             focus: {
-              DEFAULT: "#6366f1",
+              DEFAULT: "#09b6d1",
             },
           },
         },
@@ -113,11 +113,11 @@ module.exports = {
               700: "#A6ABF9",
               800: "#C4C7FB",
               900: "#E1E3FD",
-              DEFAULT: "#6366f1",
+              DEFAULT: "#09b6d1",
               foreground: "#ffffff",
             },
             focus: {
-              DEFAULT: "#6366f1",
+              DEFAULT: "#09b6d1",
             },
           },
         },
