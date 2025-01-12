@@ -10,9 +10,11 @@
     "build": "npm run build:functions && npm run build:react",
     "dev:react": "npm --prefix hello-firebase-react run dev",
     "dev:functions": "npm --prefix functions run dev",
-    "dev:emulator": "FIREBASE_APP_STORAGE=localhost:9199 GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit",
-    "dev": "concurrently \"npm run dev:functions\" \"npm run dev:react\" \"npm run dev:emulator\"",
-    "start": "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit"
+    "dev:emulator": "FIREBASE_APP_STORAGE=localhost:9199 GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit=./.emulator-data",
+    "dev:watch": "concurrently --handle-input \"npm run dev:functions\" \"npm run dev:react\"",
+    "cleanup": "lsof -t -i:8080 -i:9099 -i:5001 -i:9000 -i:4400 | xargs kill 2>/dev/null || true",
+    "dev": "echo \"Run 'npm run dev:emulator' in one terminal and 'npm run dev:watch' in another terminal\"",
+    "start": "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/functions/service-account-key.json firebase emulators:start --import=./.emulator-data --export-on-exit=./.emulator-data"
   },
   "keywords": [],
   "author": "",
