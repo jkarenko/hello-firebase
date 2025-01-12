@@ -251,6 +251,7 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
                       <span className="text-sm text-foreground-500">
                         {formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true })}
                       </span>
+                      <div className="flex-grow" />
                       <Button
                         size="sm"
                         variant="flat"
@@ -280,15 +281,16 @@ export const CommentList = ({ projectId, versionFilename, onTimeRangeClick, onCo
                           by {comment.resolvedByUser.displayName}
                         </span>
                       )}
+                      <div className="flex-grow" />
                       {comment.createdBy === userId && (
                         <Button
                           size="sm"
                           color="danger"
                           variant="flat"
+                          isIconOnly
                           onClick={() => handleDeleteClick(comment.id)}
-                          startContent={<TrashIcon className="w-4 h-4" />}
                         >
-                          Delete
+                          <TrashIcon className="w-4 h-4" />
                         </Button>
                       )}
                     </div>
