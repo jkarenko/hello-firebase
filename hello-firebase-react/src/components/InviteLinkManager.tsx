@@ -11,13 +11,18 @@ interface FirestoreTimestamp {
   nanoseconds: number;
 }
 
+interface RawTimestamp {
+  _seconds: number;
+  _nanoseconds: number;
+}
+
 interface ProjectInviteLink {
   token: string;
   projectId: string;
   createdBy: string;
   isEditor: boolean;
   createdAt: FirestoreTimestamp;
-  expiresAt: FirestoreTimestamp | null;
+  expiresAt: FirestoreTimestamp | RawTimestamp | null;
   maxUses: number | null;
   usedBy: string[];
 }
@@ -107,18 +112,25 @@ const InviteLinkManager = ({ projectId, isOwner, isEditor }: InviteLinkManagerPr
     }
   };
 
-  const formatExpiry = (timestamp: FirestoreTimestamp | null) => {
+  const formatExpiry = (timestamp: FirestoreTimestamp | RawTimestamp | null) => {
     if (!timestamp) {
       return 'Never expires';
     }
     try {
-      if (typeof timestamp.toDate !== 'function') {
-        console.error('Invalid timestamp format:', timestamp);
-        return 'Invalid date';
+      // Handle raw timestamp object
+      if ('_seconds' in timestamp && '_nanoseconds' in timestamp) {
+        const date = new Date(timestamp._seconds * 1000);
+        const days = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return `Expires in ${days} days`;
       }
-      const date = timestamp.toDate();
-      const days = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      return `Expires in ${days} days`;
+      // Handle Firestore Timestamp object
+      if (typeof timestamp.toDate === 'function') {
+        const date = timestamp.toDate();
+        const days = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return `Expires in ${days} days`;
+      }
+      console.error('Invalid timestamp format:', timestamp);
+      return 'Invalid date';
     } catch (err) {
       console.error('Error formatting expiry:', err);
       return 'Invalid date';
@@ -211,19 +223,25 @@ const InviteLinkManager = ({ projectId, isOwner, isEditor }: InviteLinkManagerPr
         <Card key={link.token} className="p-4">
           <div className="flex justify-between items-start">
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Chip
-                  color={link.isEditor ? "warning" : "success"}
-                  size="sm"
-                >
-                  {link.isEditor ? "Editor" : "Viewer"}
-                </Chip>
-                <Tooltip content={formatExpiry(link.expiresAt)}>
-                  <ClockIcon className="w-4 h-4 text-foreground-400" />
-                </Tooltip>
-                <Tooltip content={`${link.usedBy.length}${link.maxUses ? `/${link.maxUses}` : ''} uses`}>
-                  <UserGroupIcon className="w-4 h-4 text-foreground-400" />
-                </Tooltip>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Chip
+                    color={link.isEditor ? "warning" : "success"}
+                    size="sm"
+                  >
+                    {link.isEditor ? "Editor" : "Viewer"}
+                  </Chip>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-foreground-500">
+                  <div className="flex items-center gap-1">
+                    <ClockIcon className="w-4 h-4" />
+                    {formatExpiry(link.expiresAt)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <UserGroupIcon className="w-4 h-4" />
+                    {link.maxUses ? `${link.usedBy.length}/${link.maxUses} uses` : `${link.usedBy.length} uses`}
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex gap-2">
