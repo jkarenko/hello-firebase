@@ -144,7 +144,7 @@ const ProjectList = () => {
 
       <div className="space-y-2">
         <div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 py-5 max-w-[1200px] mx-auto" id="projectList">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 py-5 max-w-[1200px] mx-auto" id="projectList">
             {projects.filter(p => !p.isCollaborator).length === 0 ? (
               <div className="text-foreground-50">No projects available</div>
             ) : (
@@ -179,7 +179,7 @@ const ProjectList = () => {
       
       <div className="space-y-8">
         <div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 py-5 max-w-[1200px] mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 py-5 max-w-[1200px] mx-auto">
             {projects.filter(p => p.isCollaborator && p.collaboratorRole !== "pending").length === 0 ? (
               <div className="text-foreground-50">No shared projects</div>
             ) : (
