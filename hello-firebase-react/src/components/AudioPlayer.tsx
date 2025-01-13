@@ -422,7 +422,7 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
       ([entry]) => {
         if (entry.isIntersecting) {
           setStickyPlayer(null);
-        } else {
+        } else if (audioBuffer.current && selectedVersion) {
           setStickyPlayer(
             <StickyPlayer
               isPlaying={isPlaying}
