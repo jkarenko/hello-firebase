@@ -542,12 +542,14 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
         </div>
       </div>
 
-      {/* File Upload */}
-      <FileUpload 
-        projectId={projectId} 
-        onUploadComplete={handleUploadComplete} 
-        existingVersions={project?.versions.map(v => v.filename) || []}
-      />
+      {/* File Upload - only shown to project owner */}
+      {project.owner === getFirebaseAuth().currentUser?.uid && (
+        <FileUpload 
+          projectId={projectId} 
+          onUploadComplete={handleUploadComplete} 
+          existingVersions={project?.versions.map(v => v.filename) || []}
+        />
+      )}
 
       {error && (
         <div className="text-danger p-3 my-3 bg-danger-50 rounded-md text-sm">
