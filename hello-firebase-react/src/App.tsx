@@ -34,7 +34,7 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col text-foreground bg-background-200">
+    <div className="min-h-screen flex flex-col text-foreground bg-background">
       <Header 
         user={user}
         auth={auth}

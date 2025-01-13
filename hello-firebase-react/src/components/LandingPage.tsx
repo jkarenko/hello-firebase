@@ -16,7 +16,7 @@ const LandingPage = ({ handleLogin }: LandingPageProps) => {
         </p>
         <button 
           onClick={handleLogin}
-          className="inline-block bg-background text-primary px-8 py-4 rounded-lg font-semibold transition transform hover:-translate-y-0.5"
+          className="inline-block bg-background-content text-primary px-8 py-4 rounded-lg font-semibold transition transform hover:-translate-y-0.5"
         >
           Start Collaborating
         </button>

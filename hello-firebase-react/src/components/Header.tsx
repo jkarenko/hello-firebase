@@ -18,7 +18,7 @@ const Header = ({ user, auth, provider, variant = 'app' }: HeaderProps) => {
         className={`
           fixed top-0 left-0 right-0 z-50 py-3
           ${variant === 'landing' 
-            ? 'bg-transparent absolute' 
+            ? 'bg-background border-b border-divider shadow-sm' 
             : 'bg-background border-b border-divider shadow-sm'
           }
         `}

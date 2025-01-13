@@ -26,9 +26,10 @@ module.exports = {
           },
           colors: {
             background: {
-              DEFAULT: "#ffffff",
+              DEFAULT: "#e8e8e8",
+              content: "#ffffff",
               100: "#f3f4f6",
-              200: "#e8e8e8",
+              200: "#ffffff",
             },
             foreground: {
               DEFAULT: "#11181C",
@@ -79,9 +80,10 @@ module.exports = {
           },
           colors: {
             background: {
-              200: "#18181b",
+              DEFAULT: "#18181b",
+              content: "#333338",
               100: "#27272a",
-              DEFAULT: "#333338",
+              200: "#333338",
             },
             foreground: {
               DEFAULT: "#ECEDEE",
