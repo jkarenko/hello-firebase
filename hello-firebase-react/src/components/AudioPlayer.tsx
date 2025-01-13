@@ -11,6 +11,7 @@ import { getDisplayName } from '../utils/audio';
 import { CommentTimeRange } from '../types/comments';
 import { debounce } from 'lodash';
 import { ProjectActions } from './ProjectActions';
+import StickyPlayer from './StickyPlayer';
 
 interface Version {
   filename: string;
@@ -27,6 +28,7 @@ interface Project {
 interface AudioPlayerProps {
   projectId: string;
   onBack: () => void;
+  setStickyPlayer: (player: React.ReactNode | null) => void;
 }
 
 interface GetProjectResponse {
@@ -38,7 +40,7 @@ interface GetProjectResponse {
 
 const COMMENT_TIME_UPDATE_DELAY = 100; // 100ms debounce delay
 
-const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
+const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) => {
   const [project, setProject] = useState<Project | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -51,6 +53,9 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     end: 0
   });
   const [versionCommentCount, setVersionCommentCount] = useState(0);
+  const [isMainPlayerVisible, setIsMainPlayerVisible] = useState(true);
+  const mainPlayerRef = useRef<HTMLDivElement>(null);
+  const isIntersectingRef = useRef<boolean>(true);
 
   const audioContext = useRef<AudioContext | null>(null);
   const sourceNode = useRef<AudioBufferSourceNode | null>(null);
@@ -59,6 +64,17 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
   const offset = useRef<number>(0);
   const memoryCache = useRef<Map<string, AudioBuffer>>(new Map());
   const updateInterval = useRef<number | null>(null);
+
+  // Track sticky player visibility separately from content
+  const [shouldShowSticky, setShouldShowSticky] = useState(false);
+
+  // Debounce only the visibility changes
+  const debouncedSetShouldShow = useMemo(
+    () => debounce((shouldShow: boolean) => {
+      setShouldShowSticky(shouldShow);
+    }, 100),
+    []
+  );
 
   // Initialize AudioContext and AudioCache
   useEffect(() => {
@@ -138,7 +154,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     try {
       // Check memory cache first
       if (memoryCache.current.has(filename)) {
-        console.debug('Using memory-cached audio', { filename });
         const buffer = memoryCache.current.get(filename)!;
         setDuration(buffer.duration);
         return buffer;
@@ -168,7 +183,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
       if (cachedETag && serverETag === cachedETag) {
         const cachedBuffer = await AudioCache.get(filename);
         if (cachedBuffer) {
-          console.debug('Using cached audio (ETag match)', { filename });
           const buffer = await audioContext.current.decodeAudioData(cachedBuffer);
           memoryCache.current.set(filename, buffer);
           setDuration(buffer.duration);
@@ -311,13 +325,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     const currentTime = getCurrentTime();
     const wasPlaying = isPlaying;
     
-    console.log('Switching version', { 
-      version: selectedVersion,
-      currentTime,
-      wasPlaying,
-      keepPlaying
-    });
-    
     if (isPlaying) {
       stopAudio();
     }
@@ -333,7 +340,6 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
         setCurrentTime(currentTime);
         updateDisplay();
       }
-      console.debug('Version switch complete', { version: selectedVersion });
     } catch (error) {
       console.error('Error switching version:', error);
     }
@@ -423,6 +429,59 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
     setVersionCommentCount(comments.length);
   }, []);
 
+  // Initialize AudioContext and AudioCache
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setStickyPlayer(null);
+        } else {
+          setStickyPlayer(
+            <StickyPlayer
+              isPlaying={isPlaying}
+              currentTime={currentTime}
+              duration={duration}
+              onPlayPause={() => {
+                if (isPlaying) {
+                  stopAudio();
+                } else {
+                  playAudio(offset.current);
+                }
+              }}
+              onProgressClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const ratio = (e.clientX - rect.left) / rect.width;
+                const newTime = ratio * duration;
+                
+                if (isPlaying) {
+                  stopAudio();
+                  playAudio(newTime);
+                } else {
+                  offset.current = newTime;
+                  setCurrentTime(newTime);
+                  updateDisplay();
+                }
+              }}
+              isDisabled={!selectedVersion}
+            />
+          );
+        }
+      },
+      {
+        threshold: 0,
+        rootMargin: '-64px 0px 0px 0px'
+      }
+    );
+
+    if (mainPlayerRef.current) {
+      observer.observe(mainPlayerRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isPlaying, currentTime, duration, selectedVersion, setStickyPlayer]);
+
   if (loading) {
     return (
       <div className="text-center">
@@ -505,7 +564,11 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
       )}
 
       {/* Player controls */}
-      <div className="flex items-center gap-6">
+      <div 
+        ref={mainPlayerRef} 
+        className="flex items-center gap-6"
+        style={{ minHeight: '80px' }} // Ensure the element has height for intersection detection
+      >
         <Button
           color="primary"
           onPress={togglePlayPause}
