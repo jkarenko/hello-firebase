@@ -189,7 +189,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
             <div className="flex justify-between items-center w-full">
-              <h2 className="text-lg">Share {projectName}</h2>
+              <h2 className="text-lg text-primary">{projectName}</h2>
               <Button
                 isIconOnly
                 variant="light"
@@ -216,7 +216,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
           <ModalBody>
             <div className="space-y-6">
               {/* Add collaborator section - only visible to owners and editors */}
-              {(isOwner || collaborators.find(c => c.email === currentUserEmail)?.isEditor) && (
+              {isOwner && (
                 <div className="flex gap-2">
                   <Input
                     label="Email Address"
@@ -287,13 +287,15 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               )}
 
               {/* Invite Links section */}
-              <div className="mt-6 pt-6 border-t border-divider">
-                <InviteLinkManager
-                  projectId={projectId}
+              {isOwner && (
+                <div className="mt-6 pt-6 border-t border-divider">
+                  <InviteLinkManager
+                    projectId={projectId}
                   isOwner={isOwner}
                   isEditor={collaborators.find(c => c.email === currentUserEmail)?.isEditor ?? false}
                 />
               </div>
+              )}
             </div>
           </ModalBody>
         </ModalContent>
