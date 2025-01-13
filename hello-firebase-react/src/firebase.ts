@@ -29,7 +29,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBH2W_CEsu_3srnmQPx3cm1HEQS46_gnIM",
   authDomain: isDevelopment ? `${EMULATOR_HOST}:9099` : "echoherence.com",
   projectId: "jkarenko-hello-firebase",
-  storageBucket: isDevelopment ? `${EMULATOR_HOST}:9199` : "jkarenko-hello-firebase.firebasestorage.app",
+  storageBucket: "jkarenko-hello-firebase.firebasestorage.app",
   messagingSenderId: "380797680247",
   appId: "1:380797680247:web:8ef0365414cca9e2ace472",
   measurementId: "G-Z227CTB2VN",
