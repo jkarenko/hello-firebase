@@ -189,7 +189,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
             <div className="flex justify-between items-center w-full">
-              <h2 className="text-lg text-primary">{projectName}</h2>
+              <h2 className="text-lg">{projectName}</h2>
               <Button
                 isIconOnly
                 variant="light"

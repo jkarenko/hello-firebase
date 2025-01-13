@@ -111,10 +111,11 @@ export const ProjectActions = ({
         <DropdownMenu aria-label="Project actions">
           <DropdownItem
             key="share"
-            description="Manage access to this project"
+            description="Share this project with others"
             startContent={<ShareIcon className="w-4 h-4 text-foreground-500" />}
             onPress={() => shareRef.current?.onOpen()}
           >
+            Manage Access
           </DropdownItem>
           {isOwner ? (
             <DropdownItem
@@ -123,6 +124,7 @@ export const ProjectActions = ({
               startContent={<PencilIcon className="w-4 h-4 text-foreground-500" />}
               onPress={openRenameModal}
             >
+              Rename Project
             </DropdownItem>
           ) : null}
           {(isOwner && selectedVersion) ? (
@@ -134,6 +136,7 @@ export const ProjectActions = ({
               startContent={<TrashIcon className="w-4 h-4" />}
               onPress={deleteModal.onOpen}
             >
+              Delete Version
             </DropdownItem>
           ) : null}
           {isOwner ? (
@@ -145,6 +148,7 @@ export const ProjectActions = ({
               startContent={<TrashIcon className="w-4 h-4" />}
               onPress={deleteProjectModal.onOpen}
             >
+              Delete Project
             </DropdownItem>
           ) : null}
         </DropdownMenu>
