@@ -30,11 +30,13 @@ A collaborative audio project management system built with React and Firebase, a
   - Background pre-caching for instant playback
   - Browser caching for improved performance
   - Smooth version switching with time position preservation
+  - Sticky audio player for continuous player controls while scrolling task list
 
 - Comments System
   - Real-time comment updates
-  - Thread-based discussions
-  - Comment resolution tracking
+  - Thread-based discussions (version-specific)
+  - Task resolution tracking
+  - Task sorting (by date, state, position on timeline)
 
 ## Tech Stack
 
@@ -75,13 +77,15 @@ npm install
 2. Development Mode:
 
 ```bash
-# Start all services (React, Functions, and Firebase Emulators)
-npm run dev
+# Start Firebase emulators (in one terminal)
+npm run dev:emulator
+
+# Start development services in watch mode (in another terminal)
+npm run dev:watch
 
 # Or start individual services:
-npm run dev:react      # Start React development server
+npm run dev:react      # Start React development build in watch mode
 npm run dev:functions  # Start Functions in watch mode
-npm run dev:emulator   # Start Firebase emulators
 ```
 
 3. Building:
@@ -97,32 +101,20 @@ npm run build:functions # Build Cloud Functions
 
 4. Access the application:
 
-- React development server: Check the Vite output for the port (typically http://localhost:5173)
+- React development server: Check the Vite output for the port (http://localhost:5173)
 - Firebase Emulators: Check the Firebase output for various service ports
-  - Hosting: typically http://localhost:5000
-  - Functions: typically http://localhost:5001
-  - Firestore: typically http://localhost:8080
-  - Auth: typically http://localhost:9099
-  - Storage: typically http://localhost:9199
+  - Hosting: http://localhost:5000
+  - Functions: http://localhost:5001
+  - Firestore: http://localhost:8080
+  - Auth: http://localhost:9099
+  - Storage: http://localhost:9199
 
-## Available Scripts
+5. Additional Scripts:
 
-### Root Directory
-- `npm run dev` - Start all services in development mode
-- `npm run build` - Build all services
-- `npm run start` - Start Firebase emulators with data import/export
+```bash
+# Clean up any hanging emulator processes
+npm run cleanup
 
-### React Application (`/hello-firebase-react`)
-- `npm run dev` - Start Vite development server
-- `npm run build` - Build the React application
-- `npm run preview` - Preview the production build locally before deployment (runs on http://localhost:4173 by default)
-- `npm run lint` - Run ESLint
-
-> Note: The `preview` command is useful for testing the production build locally before deployment. Unlike `dev` which serves the source files directly, `preview` serves the actual built files from the `dist` directory, exactly as they would be served in production. This helps catch any potential issues that might only appear in the production build.
-
-### Cloud Functions (`/functions`)
-- `npm run build` - Build TypeScript functions
-- `npm run dev` - Watch and rebuild functions
-- `npm run serve` - Start functions emulator
-- `npm run deploy` - Deploy functions to Firebase
-- `npm run lint` - Run ESLint
+# Start emulators with data persistence
+npm run start
+```
