@@ -2,6 +2,8 @@
 
 A collaborative audio project management system built with React and Firebase, allowing users to manage and share audio projects with version control.
 
+Live service: https://echoherence.com
+
 ## Features
 
 - Authentication & User Management
