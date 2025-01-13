@@ -53,9 +53,7 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
     end: 0
   });
   const [versionCommentCount, setVersionCommentCount] = useState(0);
-  const [isMainPlayerVisible, setIsMainPlayerVisible] = useState(true);
   const mainPlayerRef = useRef<HTMLDivElement>(null);
-  const isIntersectingRef = useRef<boolean>(true);
 
   const audioContext = useRef<AudioContext | null>(null);
   const sourceNode = useRef<AudioBufferSourceNode | null>(null);
@@ -64,17 +62,6 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
   const offset = useRef<number>(0);
   const memoryCache = useRef<Map<string, AudioBuffer>>(new Map());
   const updateInterval = useRef<number | null>(null);
-
-  // Track sticky player visibility separately from content
-  const [shouldShowSticky, setShouldShowSticky] = useState(false);
-
-  // Debounce only the visibility changes
-  const debouncedSetShouldShow = useMemo(
-    () => debounce((shouldShow: boolean) => {
-      setShouldShowSticky(shouldShow);
-    }, 100),
-    []
-  );
 
   // Initialize AudioContext and AudioCache
   useEffect(() => {
