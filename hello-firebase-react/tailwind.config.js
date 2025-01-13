@@ -1,4 +1,5 @@
 const { nextui } = require("@nextui-org/react");
+const colors = require('tailwindcss/colors');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -8,7 +9,10 @@ module.exports = {
     "./node_modules/@nextui-org/theme/dist/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+      }
+    },
   },
   darkMode: "class",
   plugins: [
@@ -30,6 +34,7 @@ module.exports = {
               content: "#ffffff",
               100: "#f3f4f6",
               200: "#ffffff",
+              progressbar: colors.zinc[300],
             },
             foreground: {
               DEFAULT: "#11181C",
@@ -66,6 +71,11 @@ module.exports = {
             focus: {
               DEFAULT: "#09b6d1",
             },
+            border: {
+              DEFAULT: colors.zinc[300],
+              focus: colors.zinc[400],
+              hover: colors.zinc[500],
+            },
           },
         },
         dark: {
@@ -84,6 +94,7 @@ module.exports = {
               content: "#333338",
               100: "#27272a",
               200: "#333338",
+              progressbar: colors.zinc[700],
             },
             foreground: {
               DEFAULT: "#ECEDEE",
@@ -119,6 +130,11 @@ module.exports = {
             },
             focus: {
               DEFAULT: "#09b6d1",
+            },
+            border: {
+              DEFAULT: colors.zinc[700],
+              focus: colors.zinc[600],
+              hover: colors.zinc[500],
             },
           },
         },

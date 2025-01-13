@@ -528,7 +528,7 @@ const AudioPlayer = ({ projectId, onBack }: AudioPlayerProps) => {
           </div>
 
           <div 
-            className="w-full h-2 bg-background-content dark:bg-background-100 rounded-full cursor-pointer overflow-hidden"
+            className="w-full h-2 bg-background-progressbar rounded-full cursor-pointer overflow-hidden"
             onClick={handleProgressClick}
           >
             <div 
