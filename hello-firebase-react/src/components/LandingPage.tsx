@@ -9,7 +9,7 @@ interface LandingPageProps {
 const LandingPage = ({ handleLogin }: LandingPageProps) => {
   return (
     <div className="min-h-screen">
-      <section className="bg-gradient-to-br light:from-primary light:to-primary-900 dark:from-primary-200 dark:to-primary-600 py-24 px-8 text-center">
+      <section className="bg-gradient-to-br from-primary to-primary-900 dark:from-primary-200 dark:to-primary-600 py-24 px-8 text-center">
         <h1 className="text-6xl font-extrabold mb-4 drop-shadow-md tracking-tight text-primary-50">Echoherence</h1>
         <p className="text-xl max-w-2xl mx-auto mb-8 text-primary-50">
           The ultimate collaborative audio project management system. Share, version, and perfect your audio projects together.
