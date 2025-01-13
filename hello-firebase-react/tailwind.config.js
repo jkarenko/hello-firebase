@@ -71,11 +71,9 @@ module.exports = {
             focus: {
               DEFAULT: "#09b6d1",
             },
-            border: {
-              DEFAULT: colors.zinc[300],
-              focus: colors.zinc[400],
-              hover: colors.zinc[500],
-            },
+            divider: colors.zinc[400],
+            focus: colors.zinc[500],
+            hover: colors.zinc[600],
           },
         },
         dark: {
@@ -131,11 +129,9 @@ module.exports = {
             focus: {
               DEFAULT: "#09b6d1",
             },
-            border: {
-              DEFAULT: colors.zinc[700],
-              focus: colors.zinc[600],
-              hover: colors.zinc[500],
-            },
+            divider: colors.zinc[700],
+            focus: colors.zinc[600],
+            hover: colors.zinc[500],
           },
         },
       },

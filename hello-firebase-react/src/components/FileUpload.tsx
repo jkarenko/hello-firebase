@@ -125,7 +125,7 @@ const FileUpload = ({ projectId, onUploadComplete, existingVersions }: FileUploa
   return (
     <div className="w-full max-w-xl mx-auto">
       <div
-        className={`border-2 border-dashed border-border rounded-lg p-8 text-center transition-colors ${
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
           isDragging
             ? 'border-primary bg-primary/10'
             : showSuccess
