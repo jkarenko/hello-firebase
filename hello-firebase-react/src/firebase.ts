@@ -58,20 +58,14 @@ export function initializeFirebase() {
     console.error("Error setting auth persistence:", error);
   });
 
-  if (!isDevelopment) {
-    analytics = getAnalytics(app);
-  }
-
   if (isDevelopment) {
-    console.log("🔧 Using Firebase Emulators", {
-      host: EMULATOR_HOST,
-      authDomain: firebaseConfig.authDomain,
-      storageBucket: firebaseConfig.storageBucket,
-    });
+    console.log("Connecting to Firebase emulators...");
     connectAuthEmulator(auth, `http://${EMULATOR_HOST}:9099`, {disableWarnings: true});
     connectFunctionsEmulator(functions, EMULATOR_HOST, 5001);
     connectFirestoreEmulator(firestore, EMULATOR_HOST, 8080);
     connectStorageEmulator(storage, EMULATOR_HOST, 9199);
+  } else {
+    analytics = getAnalytics(app);
   }
 
   initialized = true;
