@@ -1,11 +1,11 @@
 import type { Auth } from 'firebase/auth';
 import { User, GoogleAuthProvider, signInWithRedirect, signOut } from 'firebase/auth';
 import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Badge } from "@nextui-org/react";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import PendingInvites from './PendingInvites';
 import { eventEmitter, PROJECTS_UPDATED } from '../utils/events';
 import { InboxIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
-import { handleFirstTimeUser, useUserSettings } from '../utils/user';
+import { handleFirstTimeUser } from '../utils/user';
 import { useTheme } from 'next-themes';
 
 interface AuthProps {
@@ -14,13 +14,10 @@ interface AuthProps {
   provider: GoogleAuthProvider;
 }
 
-const Auth = ({ user, auth, provider }: AuthProps) => {
+const Auth = memo(({ user, auth, provider }: AuthProps) => {
   const [pendingCount, setPendingCount] = useState(0);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
-  const { settings } = useUserSettings(user);
   const { theme, setTheme } = useTheme();
-  
-  console.log('Auth component render:', { user, settings });
 
   // Function to refresh projects by emitting an event
   const refreshProjects = () => {
@@ -49,30 +46,17 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
 
   const handleLogin = async (checkDomain = true) => {
     try {
-      console.log('Starting sign in with redirect');
-      
-      // Check if we're on .web.app domain and redirect to .firebaseapp.com if needed
+      // Check if we're on .web.app domain and redirect if needed
       if (checkDomain && window.location.hostname.includes('.web.app')) {
         const urlParams = new URLSearchParams(window.location.search);
         urlParams.set('triggerAuth', 'true');
         const newUrl = window.location.href.replace('.web.app', '.firebaseapp.com');
-        console.log('Redirecting to firebaseapp.com domain for auth');
         window.location.href = newUrl + (newUrl.includes('?') ? '&' : '?') + urlParams.toString();
         return;
       }
       
-      // Configure provider with specific settings
-      provider.addScope('email');
-      provider.addScope('profile');
-      provider.setCustomParameters({
-        prompt: 'select_account',
-        login_hint: '',  // Clear any previous login hint
-        auth_type: 'reauthenticate'  // Force re-authentication
-      });
-      
       // Initiate the redirect
       await signInWithRedirect(auth, provider);
-      console.log('Redirect initiated');
     } catch (error) {
       console.error('Login error:', error);
       alert('Error signing in. Please try again.');
@@ -81,9 +65,7 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
 
   const handleLogout = async () => {
     try {
-      console.log('Starting sign out');
       await signOut(auth);
-      console.log('Sign out complete');
       // Force reload after logout to clear any cached state
       window.location.reload();
     } catch (error) {
@@ -167,6 +149,6 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
       )}
     </div>
   );
-}
+});
 
 export default Auth; 
