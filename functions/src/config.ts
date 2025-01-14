@@ -4,6 +4,8 @@ export const ALLOWED_ORIGINS = process.env.FUNCTIONS_EMULATOR
       "https://echoherence.com",
       "https://echoherence.web.app",
       "https://echoherence.firebaseapp.com",
+      "https://dev.echoherence.com",
+      "https://dev-echoherence.web.app",
       "http://localhost:5000",
       "http://127.0.0.1:5000",
     ];
