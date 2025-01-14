@@ -1,11 +1,11 @@
 import type { Auth } from 'firebase/auth';
 import { User, GoogleAuthProvider, signInWithRedirect, signOut } from 'firebase/auth';
 import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Badge } from "@nextui-org/react";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import PendingInvites from './PendingInvites';
 import { eventEmitter, PROJECTS_UPDATED } from '../utils/events';
 import { InboxIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
-import { handleFirstTimeUser, useUserSettings } from '../utils/user';
+import { handleFirstTimeUser } from '../utils/user';
 import { useTheme } from 'next-themes';
 
 interface AuthProps {
@@ -14,83 +14,60 @@ interface AuthProps {
   provider: GoogleAuthProvider;
 }
 
-const Auth = ({ user, auth, provider }: AuthProps) => {
+const Auth = memo(({ user, auth, provider }: AuthProps) => {
   const [pendingCount, setPendingCount] = useState(0);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
-  const { settings } = useUserSettings(user);
   const { theme, setTheme } = useTheme();
-  
-  console.log('Auth component render:', { user, settings });
 
-  // Function to refresh projects by emitting an event
-  const refreshProjects = () => {
+  // Memoize callbacks to prevent unnecessary re-renders
+  const refreshProjects = useCallback(() => {
     eventEmitter.emit(PROJECTS_UPDATED);
-  };
-
-  useEffect(() => {
-    // Check if we were redirected and should auto-login
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('triggerAuth') === 'true' && !user) {
-      // Remove the parameter to prevent loops
-      urlParams.delete('triggerAuth');
-      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
-      window.history.replaceState({}, '', newUrl);
-      // Trigger login
-      handleLogin(false);
-    }
   }, []);
 
-  // Effect to handle first-time sign-in
-  useEffect(() => {
-    if (user) {
-      handleFirstTimeUser(user);
-    }
-  }, [user]);
-
-  const handleLogin = async (checkDomain = true) => {
+  const handleLogin = useCallback(async (checkDomain = true) => {
     try {
-      console.log('Starting sign in with redirect');
-      
-      // Check if we're on .web.app domain and redirect to .firebaseapp.com if needed
       if (checkDomain && window.location.hostname.includes('.web.app')) {
         const urlParams = new URLSearchParams(window.location.search);
         urlParams.set('triggerAuth', 'true');
         const newUrl = window.location.href.replace('.web.app', '.firebaseapp.com');
-        console.log('Redirecting to firebaseapp.com domain for auth');
         window.location.href = newUrl + (newUrl.includes('?') ? '&' : '?') + urlParams.toString();
         return;
       }
       
-      // Configure provider with specific settings
-      provider.addScope('email');
-      provider.addScope('profile');
-      provider.setCustomParameters({
-        prompt: 'select_account',
-        login_hint: '',  // Clear any previous login hint
-        auth_type: 'reauthenticate'  // Force re-authentication
-      });
-      
-      // Initiate the redirect
       await signInWithRedirect(auth, provider);
-      console.log('Redirect initiated');
     } catch (error) {
       console.error('Login error:', error);
       alert('Error signing in. Please try again.');
     }
-  };
+  }, [auth, provider]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
-      console.log('Starting sign out');
       await signOut(auth);
-      console.log('Sign out complete');
-      // Force reload after logout to clear any cached state
       window.location.reload();
     } catch (error) {
       console.error('Logout error:', error);
       alert('Error signing out. Please try again.');
     }
-  };
+  }, [auth]);
+
+  // Check for redirect auth parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('triggerAuth') === 'true' && !user) {
+      urlParams.delete('triggerAuth');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+      handleLogin(false);
+    }
+  }, [user, handleLogin]);
+
+  // Handle first-time sign-in
+  useEffect(() => {
+    if (user) {
+      handleFirstTimeUser(user).catch(console.error);
+    }
+  }, [user?.uid]); // Only run when user ID changes
 
   return (
     <div className="flex items-center gap-4">
@@ -167,6 +144,13 @@ const Auth = ({ user, auth, provider }: AuthProps) => {
       )}
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison for memo to prevent unnecessary re-renders
+  return (
+    prevProps.user?.uid === nextProps.user?.uid &&
+    prevProps.auth === nextProps.auth &&
+    prevProps.provider === nextProps.provider
+  );
+});
 
 export default Auth; 

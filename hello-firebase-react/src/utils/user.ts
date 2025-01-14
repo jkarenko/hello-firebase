@@ -97,6 +97,8 @@ export function useUserSettings(user: User | null) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (!user) {
       setSettings(null);
       setLoading(false);
@@ -108,21 +110,38 @@ export function useUserSettings(user: User | null) {
         setLoading(true);
         let userSettings = await getUserSettings(user.uid);
 
+        if (!isMounted) {
+          return;
+        }
+
         if (!userSettings) {
           userSettings = await initializeUserSettings(user);
+        }
+
+        if (!isMounted) {
+          return;
         }
 
         setSettings(userSettings);
         setError(null);
       } catch (err) {
+        if (!isMounted) {
+          return;
+        }
         setError(err instanceof Error ? err : new Error("Failed to load user settings"));
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadSettings();
-  }, [user]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.uid]); // Only depend on user.uid instead of the entire user object
 
   return {settings, loading, error};
 }

@@ -13,9 +13,9 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import {getFirestore} from "firebase/firestore";
-import {getAuth} from "firebase/auth";
 import {getFirebaseFunctions} from "../firebase";
 import {httpsCallable} from "firebase/functions";
+import {useAuth} from "../hooks/useAuth";
 import {
   Comment,
   CreateCommentData,
@@ -57,14 +57,31 @@ export const useComments = (projectId: string, versionFilename?: string) => {
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
   const pendingNewCommentsRef = useRef<Map<string, PendingComment>>(new Map());
   const debouncedGetCommentsFn = useRef<any>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   const db = getFirestore();
-  const auth = getAuth();
+  const {user} = useAuth();
   const functions = getFirebaseFunctions();
+
+  // Memoize the query to prevent unnecessary re-subscriptions
+  const getQuery = useCallback(() => {
+    if (!projectId) {
+      return null;
+    }
+    const commentsRef = collection(db, "projects", projectId, "comments");
+    let q = query(commentsRef, orderBy("createdAt", "desc"));
+    if (versionFilename) {
+      q = query(q, where("versionFilename", "==", versionFilename));
+    }
+    return q;
+  }, [db, projectId, versionFilename]);
 
   // Initialize debounced function
   useEffect(() => {
     debouncedGetCommentsFn.current = debounce(async (requestId: number) => {
+      if (!user) {
+        return; // Don't fetch if not authenticated
+      }
       try {
         const getCommentsFn = httpsCallable<{projectId: string; versionFilename?: string}, GetCommentsResponse>(
           functions,
@@ -75,7 +92,6 @@ export const useComments = (projectId: string, versionFilename?: string) => {
 
         // Check if this is still the most recent request
         if (requestId !== lastRequestIdRef.current) {
-          console.debug("Ignoring stale comments update", {requestId, currentId: lastRequestIdRef.current});
           return;
         }
 
@@ -89,7 +105,7 @@ export const useComments = (projectId: string, versionFilename?: string) => {
         setComments((prevComments) => {
           const updatedComments: CommentWithUserInfo[] = [...commentsWithTimestamps];
 
-          // Keep optimistic updates for modified comments
+          // Keep optimistic updates
           prevComments.forEach((prevComment) => {
             if (pendingUpdatesRef.current.has(prevComment.id)) {
               const index = updatedComments.findIndex((c) => c.id === prevComment.id);
@@ -99,9 +115,8 @@ export const useComments = (projectId: string, versionFilename?: string) => {
             }
           });
 
-          // Add pending new comments that haven't been synced yet
+          // Add pending new comments
           pendingNewCommentsRef.current.forEach((pendingComment, localId) => {
-            // Check if this pending comment has been synced (exists in server response)
             const serverComment = updatedComments.find(
               (c) =>
                 c.createdBy === pendingComment.data.createdBy &&
@@ -110,10 +125,8 @@ export const useComments = (projectId: string, versionFilename?: string) => {
             );
 
             if (serverComment) {
-              // Remove from pending if found in server response
               pendingNewCommentsRef.current.delete(localId);
             } else {
-              // Keep the optimistic update if not yet synced
               updatedComments.unshift(pendingComment.data);
             }
           });
@@ -132,28 +145,36 @@ export const useComments = (projectId: string, versionFilename?: string) => {
         setError("Failed to load comments");
         setLoading(false);
       }
-    }, 500); // 500ms debounce
-  }, [projectId, versionFilename, functions]);
+    }, 500);
+
+    return () => {
+      if (debouncedGetCommentsFn.current) {
+        debouncedGetCommentsFn.current.cancel?.();
+      }
+    };
+  }, [projectId, versionFilename, functions, user]);
 
   // Subscribe to comments
   useEffect(() => {
-    if (!projectId) {
+    const query = getQuery();
+    if (!query || !user) {
+      setComments([]);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
-    const commentsRef = collection(db, "projects", projectId, "comments");
-    let q = query(commentsRef, orderBy("createdAt", "desc"));
 
-    if (versionFilename) {
-      q = query(q, where("versionFilename", "==", versionFilename));
+    // Cleanup previous subscription
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
     }
 
-    const unsubscribe = onSnapshot(
-      q,
+    unsubscribeRef.current = onSnapshot(
+      query,
       async () => {
         const requestId = ++lastRequestIdRef.current;
-        debouncedGetCommentsFn.current(requestId);
+        debouncedGetCommentsFn.current?.(requestId);
       },
       (err) => {
         console.error("Failed to subscribe to comments:", err);
@@ -162,12 +183,17 @@ export const useComments = (projectId: string, versionFilename?: string) => {
       }
     );
 
-    return () => unsubscribe();
-  }, [projectId, versionFilename]);
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [getQuery, user]);
 
   // Create a new comment
   const createComment = async (data: CreateCommentData) => {
-    if (!auth.currentUser) {
+    if (!user) {
       throw new Error("Must be logged in to comment");
     }
 
@@ -177,7 +203,7 @@ export const useComments = (projectId: string, versionFilename?: string) => {
     const commentData: Omit<Comment, "id"> = {
       ...data,
       createdAt: now,
-      createdBy: auth.currentUser.uid,
+      createdBy: user.uid,
       resolved: false,
     };
 
@@ -186,8 +212,8 @@ export const useComments = (projectId: string, versionFilename?: string) => {
       id: localId, // Temporary ID
       ...commentData,
       createdByUser: {
-        displayName: auth.currentUser.displayName || "Unknown User",
-        photoURL: auth.currentUser.photoURL || undefined,
+        displayName: user.displayName || "Unknown User",
+        photoURL: user.photoURL || undefined,
       },
     };
 
@@ -221,7 +247,7 @@ export const useComments = (projectId: string, versionFilename?: string) => {
 
   // Update a comment
   const updateComment = async (commentId: string, data: UpdateCommentData) => {
-    if (!auth.currentUser) {
+    if (!user) {
       throw new Error("Must be logged in to comment");
     }
 
@@ -244,7 +270,7 @@ export const useComments = (projectId: string, versionFilename?: string) => {
           startTimestamp: currentComment.startTimestamp,
           endTimestamp: currentComment.endTimestamp,
           resolved: data.resolved,
-          resolvedBy: auth.currentUser.uid,
+          resolvedBy: user.uid,
           resolvedAt: serverTimestamp(), // Use serverTimestamp for consistency
         };
 
@@ -262,8 +288,8 @@ export const useComments = (projectId: string, versionFilename?: string) => {
                   ...optimisticUpdate,
                   resolvedByUser: data.resolved
                     ? {
-                        displayName: auth.currentUser?.displayName || "Unknown User",
-                        photoURL: auth.currentUser?.photoURL || undefined,
+                        displayName: user.displayName || "Unknown User",
+                        photoURL: user.photoURL || undefined,
                       }
                     : undefined,
                 }
@@ -315,7 +341,7 @@ export const useComments = (projectId: string, versionFilename?: string) => {
 
   // Delete a comment
   const deleteComment = async (commentId: string) => {
-    if (!auth.currentUser) {
+    if (!user) {
       throw new Error("Must be logged in to delete comment");
     }
 

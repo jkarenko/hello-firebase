@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getFirebaseFunctions, getAuth } from '../firebase';
+import { getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { Card, Button, Spinner } from '@nextui-org/react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useAuth } from '../hooks/useAuth';
 
 const JoinProject = () => {
   const { token } = useParams<{ token: string }>();
@@ -11,18 +11,17 @@ const JoinProject = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const auth = getAuth();
-    
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!token) {
-        setError('Invalid invite link');
-        setIsLoading(false);
-        return;
-      }
+    if (!token) {
+      setError('Invalid invite link');
+      setIsLoading(false);
+      return;
+    }
 
-      if (user) {
+    if (user) {
+      const joinProject = async () => {
         try {
           const functions = getFirebaseFunctions();
           const useInviteLink = httpsCallable(functions, 'useInviteLink');
@@ -36,14 +35,13 @@ const JoinProject = () => {
           setError(err instanceof Error ? err.message : 'Failed to join project');
           setIsLoading(false);
         }
-      } else {
-        setNeedsAuth(true);
-        setIsLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [token, navigate]);
+      };
+      joinProject();
+    } else {
+      setNeedsAuth(true);
+      setIsLoading(false);
+    }
+  }, [token, navigate, user]);
 
   if (isLoading) {
     return (
