@@ -25,9 +25,12 @@ if (!isDevelopment && HOST.includes("jkarenko-hello-firebase")) {
   window.location.href = `https://echoherence.com${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
+// Use the current domain as the authDomain unless we're in development
+const authDomain = isDevelopment ? `${EMULATOR_HOST}:9099` : HOST;
+
 const firebaseConfig = {
   apiKey: "AIzaSyBH2W_CEsu_3srnmQPx3cm1HEQS46_gnIM",
-  authDomain: isDevelopment ? `${EMULATOR_HOST}:9099` : "echoherence.com",
+  authDomain,
   projectId: "jkarenko-hello-firebase",
   storageBucket: "jkarenko-hello-firebase.firebasestorage.app",
   messagingSenderId: "380797680247",
