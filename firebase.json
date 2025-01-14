@@ -42,14 +42,29 @@
       ]
     },
     {
-      "site": "jkarenko-hello-firebase",
+      "site": "dev-echoherence",
       "public": "hello-firebase-react/dist",
-      "redirects": [
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
         {
-          "source": "/**",
-          "destination": "https://echoherence.com/:1",
-          "type": 301
+          "source": "/getSongVersions",
+          "function": "getSongVersions"
+        },
+        {
+          "source": "/getAudioUrl",
+          "function": "getAudioUrl"
+        },
+        {
+          "source": "**",
+          "destination": "/index.html"
         }
+      ],
+      "predeploy": [
+        "npm --prefix hello-firebase-react run build"
       ]
     }
   ],
