@@ -9,7 +9,6 @@ import { getFirebaseAuth, getFirebaseFunctions } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { getDisplayName } from '../utils/audio';
 import { CommentTimeRange } from '../types/comments';
-import { debounce } from 'lodash';
 import { ProjectActions } from './ProjectActions';
 import StickyPlayer from './StickyPlayer';
 
@@ -37,8 +36,6 @@ interface GetProjectResponse {
   versions: Version[];
   owner: string;
 }
-
-const COMMENT_TIME_UPDATE_DELAY = 100; // 100ms debounce delay
 
 const formatTime = (seconds: number) => {
   const minutes = Math.floor(seconds / 60);
@@ -327,16 +324,14 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
     setVersionCommentCount(comments.length);
   }, []);
 
-  // Update comment time range when seeking or playing
-  const debouncedSetCommentTimeRange = useMemo(
-    () => debounce((time: number) => {
+  const setCommentTime = useMemo(
+    () => (time: number) => {
       setCommentTimeRange(prev => ({
         ...prev,
         start: time,
-        end: time
+        end: time // Implement end time for range in future
       }));
-    }, COMMENT_TIME_UPDATE_DELAY
-  ), []);
+    }, []);
 
   // Initialize AudioContext and AudioCache
   useEffect(() => {
@@ -391,14 +386,11 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
     };
   }, []);
 
-
   useEffect(() => {
-    debouncedSetCommentTimeRange(currentTime);
+    setCommentTime(currentTime);
     return () => {
-      debouncedSetCommentTimeRange.cancel();
     };
-  }, [currentTime, debouncedSetCommentTimeRange]);
-
+  }, [currentTime, setCommentTime]);
 
   // Load project data
   useEffect(() => {

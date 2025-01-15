@@ -55,12 +55,11 @@ export const CommentForm = ({ projectId, versionFilename, currentTimeRange, onCo
   return (
     <div className="space-y-2">
       <div className="text-sm text-foreground-500">
-        Commenting at: {formatTimestamp(currentTimeRange.start)}
         {currentTimeRange.start !== currentTimeRange.end && 
           ` - ${formatTimestamp(currentTimeRange.end)}`}
       </div>
       <Textarea
-        placeholder="Add a comment... Use @email to mention someone"
+        placeholder={`Add a comment at ${formatTimestamp(currentTimeRange.start)}${currentTimeRange.start !== currentTimeRange.end ? ` - ${formatTimestamp(currentTimeRange.end)}` : ''}`}
         value={content}
         onChange={(e) => {
           setContent(e.target.value);
