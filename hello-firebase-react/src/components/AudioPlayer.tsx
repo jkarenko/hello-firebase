@@ -432,27 +432,8 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
               isPlaying={isPlaying}
               currentTime={currentTime}
               duration={duration}
-              onPlayPause={() => {
-                if (isPlaying) {
-                  stopAudio();
-                } else {
-                  playAudio(offset.current);
-                }
-              }}
-              onProgressClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const ratio = (e.clientX - rect.left) / rect.width;
-                const newTime = ratio * duration;
-                
-                if (isPlaying) {
-                  stopAudio();
-                  playAudio(newTime);
-                } else {
-                  offset.current = newTime;
-                  setCurrentTime(newTime);
-                  updateDisplay();
-                }
-              }}
+              onPlayPause={togglePlayPause}
+              onProgressClick={handleProgressClick}
               isDisabled={!selectedVersion}
             />
           );
@@ -471,7 +452,7 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
     return () => {
       observer.disconnect();
     };
-  }, [isPlaying, currentTime, duration, selectedVersion, setStickyPlayer]);
+  }, [isPlaying, currentTime, duration, selectedVersion, setStickyPlayer, togglePlayPause, handleProgressClick]);
 
   if (loading) {
     return (
