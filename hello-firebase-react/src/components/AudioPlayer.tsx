@@ -121,17 +121,25 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
         if (result.data.versions.length > 0) {
           setSelectedVersion(result.data.versions[0].filename);
         }
-        await preCacheVersions(result.data.versions);
+        setLoading(false);
       } catch (err) {
         console.error('Error loading project:', err);
         setError('Failed to load project. Please try again.');
-      } finally {
         setLoading(false);
       }
     };
 
     loadProject();
-  }, [projectId, preCacheVersions]);
+  }, [projectId]);
+
+  // Separate effect for pre-caching audio after initial render
+  useEffect(() => {
+    if (project && !loading) {
+      preCacheVersions(project.versions).catch(err => {
+        console.error('Error pre-caching versions:', err);
+      });
+    }
+  }, [project, loading, preCacheVersions]);
 
   const loadAudio = useCallback(async (filename: string): Promise<AudioBuffer> => {
     if (!audioContext.current) {
