@@ -174,9 +174,6 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
     }
   };
 
-  // Add debug render log
-  console.log('Render state:', { isOwner, ownerEmail, collaborators });
-
   return (
     <>
       <Modal 
