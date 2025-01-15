@@ -48,6 +48,7 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
   const [duration, setDuration] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [audioCaching, setAudioCaching] = useState(false);
   const [commentTimeRange, setCommentTimeRange] = useState<CommentTimeRange>({
     start: 0,
     end: 0
@@ -135,9 +136,14 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
   // Separate effect for pre-caching audio after initial render
   useEffect(() => {
     if (project && !loading) {
-      preCacheVersions(project.versions).catch(err => {
-        console.error('Error pre-caching versions:', err);
-      });
+      setAudioCaching(true);
+      preCacheVersions(project.versions)
+        .catch(err => {
+          console.error('Error pre-caching versions:', err);
+        })
+        .finally(() => {
+          setAudioCaching(false);
+        });
     }
   }, [project, loading, preCacheVersions]);
 
@@ -564,20 +570,26 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
         className="flex items-center gap-6"
         style={{ minHeight: '80px' }} // Ensure the element has height for intersection detection
       >
-        <Button
-          color="primary"
-          onPress={togglePlayPause}
-          isDisabled={!selectedVersion}
-          size="lg"
-          isIconOnly
-          radius="full"
-          className="w-16 h-16 min-w-[64px] p-0 bg-transparent hover:bg-primary/10"
-        >
-          {isPlaying ? 
-            <PauseCircleIcon className="w-16 h-16 text-primary" /> : 
-            <PlayCircleIcon className="w-16 h-16 text-primary" />
-          }
-        </Button>
+        {audioCaching && (
+          <div className="w-16 h-16 flex items-center">
+            <Spinner className="w-16 h-16" color="primary" size="lg" />
+          </div>
+        ) || (
+          <Button
+            color="primary"
+            onPress={togglePlayPause}
+            isDisabled={!selectedVersion || audioCaching}
+            size="lg"
+            isIconOnly
+            radius="full"
+            className="w-16 h-16 min-w-[64px] p-0 bg-transparent hover:bg-primary/10"
+          >
+            {isPlaying ? 
+              <PauseCircleIcon className="w-16 h-16 text-primary" /> : 
+              <PlayCircleIcon className="w-16 h-16 text-primary" />
+            }
+          </Button>
+        )}
 
         <div className="flex-1 flex flex-col gap-2">
           <div className="flex justify-between text-base">
@@ -588,6 +600,7 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
           <div 
             className="w-full h-2 bg-background-progressbar rounded-full cursor-pointer overflow-hidden"
             onClick={handleProgressClick}
+            style={{ cursor: audioCaching ? 'not-allowed' : 'pointer' }}
           >
             <div 
               className="h-full bg-primary transition-[width] duration-100"
