@@ -40,6 +40,12 @@ interface GetProjectResponse {
 
 const COMMENT_TIME_UPDATE_DELAY = 100; // 100ms debounce delay
 
+const formatTime = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
 const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) => {
   const [project, setProject] = useState<Project | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<string>('');
@@ -63,89 +69,6 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
   const offset = useRef<number>(0);
   const memoryCache = useRef<Map<string, AudioBuffer>>(new Map());
   const updateInterval = useRef<number | null>(null);
-
-  // Initialize AudioContext and AudioCache
-  useEffect(() => {
-    try {
-      audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      AudioCache.init().catch(error => {
-        console.error('Failed to initialize AudioCache:', error);
-      });
-    } catch (error) {
-      console.error('Failed to create AudioContext:', error);
-      setError('Your browser does not support audio playback');
-    }
-
-    return () => {
-      // Cleanup audio resources
-      if (updateInterval.current) {
-        window.clearInterval(updateInterval.current);
-      }
-      sourceNode.current?.stop();
-      sourceNode.current?.disconnect();
-      audioContext.current?.close();
-    };
-  }, []);
-
-  // Pre-cache all versions
-  const preCacheVersions = useCallback(async (versions: Version[]) => {
-    console.info('Starting pre-cache', { versionCount: versions.length });
-    const loadingPromises = versions.map(async version => {
-      try {
-        if (!memoryCache.current.has(version.filename)) {
-          await loadAudio(version.filename);
-          console.debug('Pre-cached version', { version: version.displayName });
-        }
-      } catch (error) {
-        console.error('Error pre-caching version', error, { version: version.displayName });
-      }
-    });
-
-    await Promise.all(loadingPromises);
-    console.info('Pre-cache complete', { cachedVersions: memoryCache.current.size });
-  }, []);
-
-  // Load project data
-  useEffect(() => {
-    const loadProject = async () => {
-      try {
-        const auth = getFirebaseAuth();
-        if (!auth.currentUser) {
-          throw new Error('User not authenticated');
-        }
-
-        const functions = getFirebaseFunctions();
-        const getProjectFn = httpsCallable<{projectId: string}, GetProjectResponse>(functions, 'getProject');
-        const result = await getProjectFn({ projectId });
-        
-        setProject(result.data);
-        if (result.data.versions.length > 0) {
-          setSelectedVersion(result.data.versions[0].filename);
-        }
-        setLoading(false);
-      } catch (err) {
-        console.error('Error loading project:', err);
-        setError('Failed to load project. Please try again.');
-        setLoading(false);
-      }
-    };
-
-    loadProject();
-  }, [projectId]);
-
-  // Separate effect for pre-caching audio after initial render
-  useEffect(() => {
-    if (project && !loading) {
-      setAudioCaching(true);
-      preCacheVersions(project.versions)
-        .catch(err => {
-          console.error('Error pre-caching versions:', err);
-        })
-        .finally(() => {
-          setAudioCaching(false);
-        });
-    }
-  }, [project, loading, preCacheVersions]);
 
   const loadAudio = useCallback(async (filename: string): Promise<AudioBuffer> => {
     if (!audioContext.current) {
@@ -214,11 +137,23 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
     }
   }, [projectId]);
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  // Pre-cache all versions
+  const preCacheVersions = useCallback(async (versions: Version[]) => {
+    console.info('Starting pre-cache', { versionCount: versions.length });
+    const loadingPromises = versions.map(async version => {
+      try {
+        if (!memoryCache.current.has(version.filename)) {
+          await loadAudio(version.filename);
+          console.debug('Pre-cached version', { version: version.displayName });
+        }
+      } catch (error) {
+        console.error('Error pre-caching version', error, { version: version.displayName });
+      }
+    });
+
+    await Promise.all(loadingPromises);
+    console.info('Pre-cache complete', { cachedVersions: memoryCache.current.size });
+  }, [loadAudio]);
 
   const getCurrentTime = useCallback(() => {
     if (!audioBuffer.current) {
@@ -346,12 +281,14 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
     }
   }, [getCurrentTime, isPlaying, loadAudio, playAudio, selectedVersion, stopAudio, updateDisplay]);
 
-  // Handle version change
-  useEffect(() => {
-    if (selectedVersion) {
-      switchVersion(true);
+  const handleTimeRangeClick = useCallback((range: CommentTimeRange) => {
+    if (isPlaying) {
+      stopAudio();
     }
-  }, [selectedVersion, switchVersion]);
+    offset.current = range.start;
+    setCurrentTime(range.start);
+    updateDisplay();
+  }, [isPlaying, stopAudio, updateDisplay]);
 
   const togglePlayPause = useCallback(() => {
     if (isPlaying) {
@@ -360,15 +297,6 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
       playAudio(offset.current);
     }
   }, [isPlaying, playAudio, stopAudio]);
-
-  // Clean up interval on unmount
-  useEffect(() => {
-    return () => {
-      if (updateInterval.current) {
-        clearInterval(updateInterval.current);
-      }
-    };
-  }, []);
 
   const handleUploadComplete = useCallback(async () => {
     try {
@@ -392,6 +320,13 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
     }
   }, [projectId, preCacheVersions]);
 
+  const handleCommentCreate = useCallback(() => {
+  }, []);
+
+  const handleCommentsLoaded = useCallback((comments: any[]) => {
+    setVersionCommentCount(comments.length);
+  }, []);
+
   // Update comment time range when seeking or playing
   const debouncedSetCommentTimeRange = useMemo(
     () => debounce((time: number) => {
@@ -400,9 +335,62 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
         start: time,
         end: time
       }));
-    }, COMMENT_TIME_UPDATE_DELAY),
-    []
-  );
+    }, COMMENT_TIME_UPDATE_DELAY
+  ), []);
+
+  // Initialize AudioContext and AudioCache
+  useEffect(() => {
+    try {
+      audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      AudioCache.init().catch(error => {
+        console.error('Failed to initialize AudioCache:', error);
+      });
+    } catch (error) {
+      console.error('Failed to create AudioContext:', error);
+      setError('Your browser does not support audio playback');
+    }
+
+    return () => {
+      // Cleanup audio resources
+      if (updateInterval.current) {
+        window.clearInterval(updateInterval.current);
+      }
+      sourceNode.current?.stop();
+      sourceNode.current?.disconnect();
+      audioContext.current?.close();
+    };
+  }, []);
+
+  // Separate effect for pre-caching audio after initial render
+  useEffect(() => {
+    if (project && !loading) {
+      setAudioCaching(true);
+      preCacheVersions(project.versions)
+        .catch(err => {
+          console.error('Error pre-caching versions:', err);
+        })
+        .finally(() => {
+          setAudioCaching(false);
+        });
+    }
+  }, [project, loading, preCacheVersions]);
+
+  // Handle version change
+  useEffect(() => {
+    if (selectedVersion) {
+      switchVersion(true);
+    }
+  }, [selectedVersion, switchVersion]);
+
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => {
+      if (updateInterval.current) {
+        clearInterval(updateInterval.current);
+      }
+    };
+  }, []);
+
 
   useEffect(() => {
     debouncedSetCommentTimeRange(currentTime);
@@ -411,24 +399,34 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
     };
   }, [currentTime, debouncedSetCommentTimeRange]);
 
-  const handleTimeRangeClick = useCallback((range: CommentTimeRange) => {
-    if (isPlaying) {
-      stopAudio();
-    }
-    offset.current = range.start;
-    setCurrentTime(range.start);
-    updateDisplay();
-  }, [isPlaying, stopAudio, updateDisplay]);
 
-  // Add this function to handle comment creation
-  const handleCommentCreate = useCallback(() => {
-    // No-op - we don't want to pause playback anymore
-  }, []);
+  // Load project data
+  useEffect(() => {
+    const loadProject = async () => {
+      try {
+        const auth = getFirebaseAuth();
+        if (!auth.currentUser) {
+          throw new Error('User not authenticated');
+        }
 
-  // Add comment count update handler
-  const handleCommentsLoaded = useCallback((comments: any[]) => {
-    setVersionCommentCount(comments.length);
-  }, []);
+        const functions = getFirebaseFunctions();
+        const getProjectFn = httpsCallable<{projectId: string}, GetProjectResponse>(functions, 'getProject');
+        const result = await getProjectFn({ projectId });
+        
+        setProject(result.data);
+        if (result.data.versions.length > 0) {
+          setSelectedVersion(result.data.versions[0].filename);
+        }
+        setLoading(false);
+      } catch (err) {
+        console.error('Error loading project:', err);
+        setError('Failed to load project. Please try again.');
+        setLoading(false);
+      }
+    };
+
+    loadProject();
+  }, [projectId]);
 
   // Initialize AudioContext and AudioCache
   useEffect(() => {
@@ -486,7 +484,7 @@ const AudioPlayer = ({ projectId, onBack, setStickyPlayer }: AudioPlayerProps) =
   if (loading) {
     return (
       <div className="text-center">
-        <h1 className="text-2xl font-semibold mb-6 text-foreground">Loading Audio Player...</h1>
+        <h1 className="text-2xl font-semibold mb-6 text-foreground">Loading Project...</h1>
         <div className="text-foreground-50">
           Please wait while we load your audio...
         </div>
