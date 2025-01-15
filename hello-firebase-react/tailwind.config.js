@@ -11,7 +11,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-      }
+      },
+      backgroundImage: {
+        'gradient-to-br': 'linear-gradient(to bottom right, var(--tw-gradient-stops))',
+        'hero': 'url("/Echoherence-Back-1920x1080.png")',
+      },
     },
   },
   darkMode: "class",

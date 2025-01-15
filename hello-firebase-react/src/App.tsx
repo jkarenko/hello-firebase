@@ -41,36 +41,39 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col text-foreground bg-background">
-      <Header 
-        user={user}
-        auth={auth}
-        provider={provider}
-        variant={user ? 'app' : 'landing'}
-        stickyPlayer={stickyPlayer}
-      />
+    <div className="min-h-screen flex flex-col text-foreground relative">
+      <div className="absolute inset-0 bg-hero opacity-75 dark:opacity-20 z-0 dark:invert blur-md"></div>
+      <div className="relative z-10 flex flex-col flex-1">
+        <Header 
+          user={user}
+          auth={auth}
+          provider={provider}
+          variant={user ? 'app' : 'landing'}
+          stickyPlayer={stickyPlayer}
+        />
 
-      {user ? (
-        <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 pt-16 pb-8">
+        {user ? (
+          <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 pt-16 pb-8">
+            <Routes>
+              <Route path="/" element={<ProjectList />} />
+              <Route path="/project/:projectId" element={
+                <ProjectView setStickyPlayer={setStickyPlayer} />
+              } />
+              <Route path="/app" element={<ProjectList />} />
+              <Route path="/join/:token" element={<JoinProject />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+        ) : (
           <Routes>
-            <Route path="/" element={<ProjectList />} />
-            <Route path="/project/:projectId" element={
-              <ProjectView setStickyPlayer={setStickyPlayer} />
+            <Route path="/" element={
+              <LandingPage handleLogin={handleLogin} />
             } />
-            <Route path="/app" element={<ProjectList />} />
             <Route path="/join/:token" element={<JoinProject />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </main>
-      ) : (
-        <Routes>
-          <Route path="/" element={
-            <LandingPage handleLogin={handleLogin} />
-          } />
-          <Route path="/join/:token" element={<JoinProject />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      )}
+        )}
+      </div>
     </div>
   );
 };
