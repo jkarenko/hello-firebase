@@ -42,7 +42,7 @@ const App = () => {
 
   return (
     <div className="min-h-screen flex flex-col text-foreground relative">
-      <div className="absolute inset-0 bg-hero opacity-75 dark:opacity-20 z-0 dark:invert blur-md"></div>
+      <div className="absolute inset-0 bg-hero-waves opacity-100 dark:opacity-100 z-0 dark:invert" style={{ top: '-73px' }}></div>
       <div className="relative z-10 flex flex-col flex-1">
         <Header 
           user={user}

@@ -14,7 +14,8 @@ module.exports = {
       },
       backgroundImage: {
         'gradient-to-br': 'linear-gradient(to bottom right, var(--tw-gradient-stops))',
-        'hero': 'url("/Echoherence-Back-1920x1080.png")',
+        'hero-angles': 'url("/Echoherence-Back-1920x1080-Angles.png")',
+        'hero-waves': 'url("/Echoherence-Back-1920x1080-Waves.png")',
       },
     },
   },
