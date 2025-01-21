@@ -246,7 +246,7 @@ const ShareProject = React.forwardRef<{ onOpen: () => void }, ShareProjectProps>
               )}
               
               {/* Collaborators section */}
-              {collaborators.length > 0 && (
+              {collaborators.length > 0 && isOwner && (
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium text-foreground">People with access</h3>
                   <div className="space-y-3">
